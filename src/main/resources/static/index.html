@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UptimePulse — Website Health & SSL Monitoring Dashboard</title>
+  <meta name="description" content="Monitor website uptime, response latency, and SSL certificate expiry in real-time with UptimePulse.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<!-- ══════════════ NAVBAR ══════════════ -->
+<nav class="navbar">
+  <a href="/" class="logo">
+    <div class="logo-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+    UptimePulse
+  </a>
+  <div class="nav-actions">
+    <!-- Probe Server Badge -->
+    <div class="nav-user-badge" id="probeBadge" title="Probe Server Node" style="background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.25)">
+      <i class="fa-solid fa-microchip" style="color:var(--accent-blue)"></i>
+      <span id="probeNodeText">Probe: Local Server</span>
+    </div>
+
+    <!-- Logged-in user badge -->
+    <div id="userBadge" class="nav-user-badge" style="display:none">
+      <div class="user-avatar" id="userInitial">U</div>
+      <span id="userEmailDisplay">user@uptimepulse.com</span>
+      <button onclick="handleLogout()" title="Logout" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;margin-left:0.25rem;padding:0.1rem 0.3rem;border-radius:6px;transition:.2s" onmouseover="this.style.color='var(--accent-rose)'" onmouseout="this.style.color='var(--text-secondary)'">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+    <!-- Login button when logged out -->
+    <button id="loginNavBtn" class="btn btn-outline" onclick="openAuthModal('login')" style="display:none">
+      <i class="fa-solid fa-right-to-bracket"></i> Log In
+    </button>
+
+    <button class="btn btn-outline" onclick="openNotificationsModal()" title="Notification Webhooks">
+      <i class="fa-solid fa-bell"></i> <span class="hide-sm">Alert Webhooks</span>
+    </button>
+    <a href="/swagger-ui.html" target="_blank" class="btn btn-outline" title="API Docs">
+      <i class="fa-solid fa-code"></i> <span class="hide-sm">API Docs</span>
+    </a>
+    <a href="/h2-console" target="_blank" class="btn btn-outline" title="DB Console">
+      <i class="fa-solid fa-database"></i> <span class="hide-sm">DB</span>
+    </a>
+    <button class="btn btn-primary" onclick="openAddMonitorModal()">
+      <i class="fa-solid fa-plus"></i> Add Monitor
+    </button>
+  </div>
+</nav>
+
+<!-- ══════════════ TOAST CONTAINER ══════════════ -->
+<div id="toastContainer"></div>
+
+<!-- ══════════════ MAIN CONTENT ══════════════ -->
+<main class="container">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Monitoring Dashboard</h1>
+      <p class="page-subtitle">Real-time website health, persistent latency tracking, and multi-channel SSL alerts</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <span id="lastRefreshedBadge" style="font-size:0.75rem;color:var(--text-secondary)">
+        <i class="fa-solid fa-circle-check" style="color:var(--accent-emerald)"></i> Live (H2 Persistent DB)
+      </span>
+      <button class="btn btn-outline btn-sm" onclick="refreshAll()" id="refreshBtn">
+        <i class="fa-solid fa-rotate"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats Row ── -->
+  <div class="stats-grid">
+    <div class="card stat-card green">
+      <div class="stat-label"><i class="fa-solid fa-shield-halved"></i> Overall Uptime</div>
+      <div class="stat-value text-emerald" id="statUptime">—</div>
+      <div class="stat-meta" id="statUptimeMeta">Calculating…</div>
+    </div>
+    <div class="card stat-card blue">
+      <div class="stat-label"><i class="fa-solid fa-server"></i> Active Monitors</div>
+      <div class="stat-value" id="statMonitors">0</div>
+      <div class="stat-meta" id="statMonitorsMeta">Health &amp; SSL checks running</div>
+    </div>
+    <div class="card stat-card amber">
+      <div class="stat-label"><i class="fa-solid fa-bolt"></i> Avg Response</div>
+      <div class="stat-value text-amber" id="statLatency">— ms</div>
+      <div class="stat-meta">Non-blocking NIO HTTP checks</div>
+    </div>
+    <div class="card stat-card violet">
+      <div class="stat-label"><i class="fa-solid fa-lock"></i> SSL Certificates</div>
+      <div class="stat-value" id="statSSL" style="color:var(--accent-violet)">—</div>
+      <div class="stat-meta" id="statSSLMeta">Checking expiry dates…</div>
+    </div>
+  </div>
+
+  <!-- ── Instant Analyzer ── -->
+  <div class="card analyzer-section">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+      <div>
+        <div class="analyzer-title"><i class="fa-solid fa-magnifying-glass-chart" style="color:var(--accent-cyan)"></i> ⚡ Instant Website &amp; SSL Analyzer</div>
+        <div class="analyzer-sub">Type any domain and scan it instantly for status, response latency, and SSL certificate days remaining.</div>
+      </div>
+    </div>
+    <div class="analyzer-input-row">
+      <input type="url" id="analyzerUrl" class="form-input" placeholder="https://github.com" value="https://github.com">
+      <button class="btn btn-primary" onclick="runAnalyzer()">
+        <i class="fa-solid fa-bolt"></i> Scan Now
+      </button>
+    </div>
+    <div class="analyzer-result" id="analyzerResult">
+      <div class="analyzer-result-grid">
+        <div>
+          <div id="analyzerStatusBadge"></div>
+          <div style="font-size:0.9rem;font-weight:700;margin-top:0.35rem" id="analyzerUrl2"></div>
+        </div>
+        <div class="analyzer-result-stats">
+          <div>
+            <div class="analyzer-stat-label">Latency</div>
+            <div class="analyzer-stat-val text-amber" id="analyzerLatency">—</div>
+          </div>
+          <div>
+            <div class="analyzer-stat-label">SSL Expires</div>
+            <div class="analyzer-stat-val text-emerald" id="analyzerSSL">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filter & Search Toolbar ── -->
+  <div class="card" style="padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem">
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button class="btn btn-outline btn-sm filter-pill active" onclick="filterByStatus('ALL', this)">All</button>
+      <button class="btn btn-outline btn-sm filter-pill" onclick="filterByStatus('UP', this)">Online</button>
+      <button class="btn btn-outline btn-sm filter-pill" onclick="filterByStatus('ISSUES', this)">Issues</button>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center;flex:1;max-width:320px">
+      <input type="text" id="searchInput" class="form-input" placeholder="Search monitors or #tags..." oninput="handleSearch(this.value)">
+    </div>
+  </div>
+
+  <!-- ── Monitors + Alert Feed Grid ── -->
+  <div class="main-grid">
+
+    <!-- Monitors Column -->
+    <div>
+      <div class="section-header">
+        <div class="section-title">
+          <i class="fa-solid fa-list-check" style="color:var(--accent-blue)"></i>
+          Active Monitored Websites
+        </div>
+      </div>
+      <div class="monitors-grid" id="monitorsGrid">
+        <!-- Populated via JS -->
+      </div>
+    </div>
+
+    <!-- Alert Feed Column -->
+    <div class="card alert-panel">
+      <div class="alert-panel-title">
+        <i class="fa-solid fa-bell" style="color:var(--accent-rose)"></i>
+        Alert Event Feed
+        <span id="alertCountBadge" style="margin-left:auto;font-size:0.72rem;background:rgba(244,63,94,0.15);color:var(--accent-rose);border:1px solid rgba(244,63,94,0.25);border-radius:9999px;padding:0.15rem 0.5rem;display:none"></span>
+      </div>
+      <div class="alert-feed" id="alertFeed">
+        <!-- Populated via JS -->
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ══════════════ AUTH MODAL ══════════════ -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="auth-tabs" style="flex:1;margin-right:1rem;margin-bottom:0;border-bottom:none;gap:0.5rem">
+        <button id="tabLoginBtn" class="auth-tab active" onclick="switchAuthTab('login')">Log In</button>
+        <button id="tabRegisterBtn" class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+      </div>
+      <button class="modal-close" onclick="closeAuthModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="authLoginForm" onsubmit="handleLoginSubmit(event)">
+      <div class="quick-fill-row">
+        <button type="button" class="btn btn-outline btn-sm" onclick="fillCreds('user@uptimepulse.com','password123')">
+          <i class="fa-solid fa-user"></i> Demo User
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="fillCreds('admin@uptimepulse.com','admin123')">
+          <i class="fa-solid fa-shield-halved"></i> Admin
+        </button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" value="user@uptimepulse.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="loginPwd" class="form-input" placeholder="••••••••" value="password123" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center" id="loginSubmitBtn">
+        Sign In
+      </button>
+    </form>
+
+    <!-- Register Form -->
+    <form id="authRegisterForm" onsubmit="handleRegisterSubmit(event)" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="regName" class="form-input" placeholder="Jane Doe" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="regEmail" class="form-input" placeholder="jane@example.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="regPwd" class="form-input" placeholder="Min. 8 characters" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center" id="regSubmitBtn">
+        Create Account
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════ ADD MONITOR MODAL ══════════════ -->
+<div class="modal-overlay" id="addMonitorModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fa-solid fa-plus-circle" style="color:var(--accent-blue)"></i> Add New Monitor</div>
+      <button class="modal-close" onclick="closeAddMonitorModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="addMonitorForm" onsubmit="handleAddMonitor(event)">
+      <div class="form-group">
+        <label class="form-label">Monitor Name</label>
+        <input type="text" id="monName" class="form-input" placeholder="e.g. My Production API" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target URL or Host:Port</label>
+        <input type="text" id="monUrl" class="form-input" placeholder="https://mywebsite.com or redis.mycompany.com:6379" required>
+      </div>
+      <div style="display:flex;gap:1rem">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Check Type</label>
+          <select id="monType" class="form-input">
+            <option value="HTTP" selected>HTTP / HTTPS Website</option>
+            <option value="TCP">TCP Port Probe</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Check Interval</label>
+          <select id="monInterval" class="form-input">
+            <option value="1">Every 1 Minute</option>
+            <option value="3" selected>Every 3 Minutes</option>
+            <option value="5">Every 5 Minutes</option>
+            <option value="10">Every 10 Minutes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags (comma separated)</label>
+        <input type="text" id="monTags" class="form-input" placeholder="production, api, core" value="production">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeAddMonitorModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="addMonitorSubmitBtn">
+          <i class="fa-solid fa-plus"></i> Create Monitor
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════ NOTIFICATION WEBHOOKS MODAL ══════════════ -->
+<div class="modal-overlay" id="notificationsModal">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fa-solid fa-bell" style="color:var(--accent-violet)"></i> Webhook &amp; Alert Integrations</div>
+      <button class="modal-close" onclick="closeNotificationsModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Webhook List -->
+    <div id="notificationsList" style="margin-bottom:1.5rem">
+      <!-- Loaded dynamically via JS -->
+    </div>
+
+    <div class="divider"><span>ADD NEW CHANNEL</span></div>
+
+    <form id="addWebhookForm" onsubmit="handleAddNotificationChannel(event)">
+      <div class="form-group">
+        <label class="form-label">Channel Name</label>
+        <input type="text" id="webhookName" class="form-input" placeholder="e.g. Production Slack Channel" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Channel Type</label>
+        <select id="webhookChannelType" class="form-input">
+          <option value="SLACK">Slack Incoming Webhook</option>
+          <option value="DISCORD">Discord Webhook</option>
+          <option value="WEBHOOK">Generic HTTP Webhook (JSON POST)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Webhook Endpoint URL</label>
+        <input type="url" id="webhookUrl" class="form-input" placeholder="https://hooks.slack.com/services/..." required>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeNotificationsModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveWebhookBtn">
+          <i class="fa-solid fa-paper-plane"></i> Save &amp; Test Webhook
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════ DETAILED ANALYTICS & LOGS MODAL ══════════════ -->
+<div class="modal-overlay" id="analyticsModal">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-header">
+      <div class="modal-title" id="analyticsTitle"><i class="fa-solid fa-chart-line" style="color:var(--accent-blue)"></i> Monitor Performance Analytics</div>
+      <button class="modal-close" onclick="closeAnalyticsModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:0.7rem;color:var(--text-secondary);font-weight:700;text-transform:uppercase">Min Latency</div>
+        <div id="analyticsMinLat" style="font-size:1.3rem;font-weight:800;color:var(--accent-emerald)">—</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:0.7rem;color:var(--text-secondary);font-weight:700;text-transform:uppercase">Avg Latency</div>
+        <div id="analyticsAvgLat" style="font-size:1.3rem;font-weight:800;color:var(--accent-amber)">—</div>
+      </div>
+      <div class="card" style="padding:1rem;text-align:center">
+        <div style="font-size:0.7rem;color:var(--text-secondary);font-weight:700;text-transform:uppercase">Max Latency</div>
+        <div id="analyticsMaxLat" style="font-size:1.3rem;font-weight:800;color:var(--accent-rose)">—</div>
+      </div>
+    </div>
+
+    <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.75rem">Recent 10 Health Check Logs</div>
+    <div style="max-height:260px;overflow-y:auto;background:rgba(255,255,255,0.02);border:1px solid var(--border-color);border-radius:var(--radius-md)">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;text-align:left">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border-color);color:var(--text-secondary);background:rgba(255,255,255,0.03)">
+            <th style="padding:0.6rem 0.8rem">Time</th>
+            <th style="padding:0.6rem 0.8rem">Status</th>
+            <th style="padding:0.6rem 0.8rem">HTTP Code</th>
+            <th style="padding:0.6rem 0.8rem">Latency</th>
+            <th style="padding:0.6rem 0.8rem">SSL Expiry</th>
+          </tr>
+        </thead>
+        <tbody id="analyticsLogsTable">
+          <!-- Populated dynamically via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Public Status — UptimePulse</title>
+  <meta name="description" content="Public status page for this monitored website.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .history-bar { display: flex; gap: 3px; align-items: flex-end; }
+    .history-bar-item { flex: 1; border-radius: 3px; min-height: 8px; transition: all 0.2s; }
+    .history-bar-item:hover { opacity: 0.8; }
+    .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin: 1.5rem 0; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="logo">
+    <div class="logo-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+    UptimePulse
+  </a>
+  <a href="/login.html" class="btn btn-outline">
+    <i class="fa-solid fa-right-to-bracket"></i> Sign In
+  </a>
+</nav>
+
+<main class="container">
+
+  <!-- Status Hero -->
+  <div class="status-hero card" style="margin-bottom:1.5rem">
+    <div id="statusBadgeWrap" style="margin-bottom:0.75rem">
+      <span class="badge badge-pending"><span class="pulse-dot pulse-blue"></span> Checking…</span>
+    </div>
+    <h1 style="font-size:1.5rem;font-weight:800;margin-bottom:0.4rem" id="siteName">Checking Status…</h1>
+    <a id="siteUrl" href="#" target="_blank" style="color:var(--text-secondary);font-size:0.9rem;text-decoration:none"></a>
+
+    <div class="stat-row" id="statRow" style="margin-top:1.5rem">
+      <div class="card" style="padding:1.1rem;text-align:center">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-secondary);margin-bottom:.5rem">Status</div>
+        <div id="st-status" style="font-size:1.3rem;font-weight:800">—</div>
+      </div>
+      <div class="card" style="padding:1.1rem;text-align:center">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-secondary);margin-bottom:.5rem">Latency</div>
+        <div id="st-latency" style="font-size:1.3rem;font-weight:800;color:var(--accent-amber)">—</div>
+      </div>
+      <div class="card" style="padding:1.1rem;text-align:center">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-secondary);margin-bottom:.5rem">SSL Expires</div>
+        <div id="st-ssl" style="font-size:1.3rem;font-weight:800;color:var(--accent-emerald)">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real Ping Uptime History -->
+  <div class="card" style="padding:1.5rem;margin-bottom:1.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-size:1rem;font-weight:700">Real Ping Uptime History</div>
+      <div id="uptimePct" style="font-size:1rem;font-weight:800;color:var(--accent-emerald)">—</div>
+    </div>
+    <div class="history-bar" id="historyBar" style="height:48px"></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-secondary);margin-top:.5rem">
+      <span>Earliest Check</span><span>Latest Check</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;color:var(--text-secondary);font-size:0.82rem;padding:1rem">
+    <p>Powered by <a href="/" style="color:var(--accent-blue);text-decoration:none;font-weight:600">UptimePulse</a> — Persistent website health &amp; SSL monitoring</p>
+    <p style="margin-top:0.25rem">This status page auto-refreshes every 60 seconds</p>
+  </div>
+
+</main>
+
+<script>
+  const params   = new URLSearchParams(window.location.search);
+  const publicId = params.get('id') || '';
+
+  function loadStatus() {
+    if (!publicId) return;
+    fetch(`/api/v1/public/status/${publicId}`)
+      .then(r => r.json())
+      .then(d => {
+        const isUp = d.status === 'UP';
+        const isDeg = d.status === 'DEGRADED';
+
+        // Badge
+        const badgeCls   = isUp ? 'badge-up' : (isDeg ? 'badge-degraded' : 'badge-down');
+        const pulseCls   = isUp ? 'pulse-green' : (isDeg ? 'pulse-amber' : 'pulse-red');
+        const statusText = d.status || 'UNKNOWN';
+        document.getElementById('statusBadgeWrap').innerHTML = `
+          <span class="badge ${badgeCls}">
+            <span class="pulse-dot ${pulseCls}"></span>
+            ${isUp ? 'All Systems Operational' : isDeg ? 'Degraded Performance' : 'Service Disruption'}
+          </span>`;
+
+        // Title + URL
+        document.getElementById('siteName').textContent = d.name || d.url;
+        const anchor = document.getElementById('siteUrl');
+        anchor.href = d.url; anchor.textContent = d.url;
+        document.title = `${d.name || d.url} Status — UptimePulse`;
+
+        // Stats
+        document.getElementById('st-status').textContent  = statusText;
+        document.getElementById('st-status').style.color  = isUp ? 'var(--accent-emerald)' : 'var(--accent-rose)';
+        document.getElementById('st-latency').textContent = d.lastLatencyMs != null ? `${d.lastLatencyMs} ms` : '— ms';
+        document.getElementById('st-ssl').textContent     = d.sslDaysRemaining != null ? `${d.sslDaysRemaining} days` : 'N/A';
+        document.getElementById('st-ssl').style.color     = d.sslDaysRemaining > 30 ? 'var(--accent-emerald)' : d.sslDaysRemaining > 7 ? 'var(--accent-amber)' : 'var(--accent-rose)';
+
+        // Render REAL Ping Results from DB
+        const bar = document.getElementById('historyBar');
+        bar.innerHTML = '';
+        const recentHistory = d.recentHistory || [];
+
+        if (recentHistory.length === 0) {
+          bar.innerHTML = '<div style="color:var(--text-secondary);font-size:0.85rem;width:100%;text-align:center">No ping history recorded yet.</div>';
+        } else {
+          // Render real ping check bars (oldest to newest)
+          recentHistory.slice().reverse().forEach(p => {
+            const up = p.status === 'UP';
+            const deg = p.status === 'DEGRADED';
+            const div = document.createElement('div');
+            div.className = 'history-bar-item';
+            const lat = p.latencyMs || 50;
+            const h = Math.min(48, Math.max(12, Math.round(lat / 10)));
+            const color = up ? 'var(--accent-emerald)' : (deg ? 'var(--accent-amber)' : 'var(--accent-rose)');
+            div.style.cssText = `height:${h}px;background:${color};opacity:${up ? '0.85' : '1'}`;
+            div.title = `${p.status} - ${lat}ms (${new Date(p.timestamp).toLocaleTimeString()})`;
+            bar.appendChild(div);
+          });
+        }
+
+        // Uptime %
+        document.getElementById('uptimePct').textContent = d.uptimePercentage || '100%';
+      })
+      .catch(() => {
+        document.getElementById('siteName').textContent = 'Status Unavailable';
+        document.getElementById('statusBadgeWrap').innerHTML = '<span class="badge badge-down"><span class="pulse-dot pulse-red"></span> Cannot Load</span>';
+      });
+  }
+
+  loadStatus();
+  setInterval(loadStatus, 60_000);
+</script>
+</body>
+</html>

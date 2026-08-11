@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — UptimePulse</title>
+  <meta name="description" content="Log in or register to access your UptimePulse monitoring dashboard.">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    /* Extra star field effect on login page */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.25) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 50% 70%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 60%, rgba(255,255,255,0.15) 0%, transparent 100%);
+      pointer-events: none; z-index: 0;
+    }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-page { width: 100%; display: flex; align-items: center; justify-content: center; }
+    .error-msg {
+      color: var(--accent-rose);
+      font-size: 0.82rem;
+      background: rgba(244,63,94,0.1);
+      border: 1px solid rgba(244,63,94,0.25);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.85rem;
+      margin-bottom: 1rem;
+      display: none;
+      align-items: center;
+      gap: 0.4rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+
+      <!-- Logo -->
+      <div class="login-logo">
+        <div class="logo-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+        <span>UptimePulse</span>
+      </div>
+      <p class="login-tagline">Real-time website health &amp; SSL monitoring</p>
+
+      <!-- Tabs -->
+      <div class="auth-tabs" style="margin-bottom:1.5rem">
+        <button id="tabLoginBtn" class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+        <button id="tabRegBtn"   class="auth-tab"        onclick="switchTab('register')">Register</button>
+      </div>
+
+      <!-- Error Banner -->
+      <div class="error-msg" id="errorMsg">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="errorText">Invalid credentials</span>
+      </div>
+
+      <!-- ── Login Form ── -->
+      <form id="loginForm" onsubmit="doLogin(event)">
+        <!-- Quick Fill -->
+        <div class="quick-fill-row">
+          <button type="button" class="btn btn-outline btn-sm" onclick="fill('user@uptimepulse.com','password123')">
+            <i class="fa-solid fa-user"></i> Demo User
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="fill('admin@uptimepulse.com','admin123')">
+            <i class="fa-solid fa-shield-halved"></i> Admin
+          </button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" value="user@uptimepulse.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div style="position:relative">
+            <input type="password" id="loginPwd" class="form-input" placeholder="••••••••" value="password123" required style="padding-right:2.75rem">
+            <button type="button" onclick="togglePwd('loginPwd',this)" style="position:absolute;right:0.7rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:0.9rem">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:.75rem" id="loginBtn">
+          <i class="fa-solid fa-right-to-bracket"></i> Sign In
+        </button>
+      </form>
+
+      <!-- ── Register Form ── -->
+      <form id="registerForm" onsubmit="doRegister(event)" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="regName" class="form-input" placeholder="Jane Doe" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" id="regEmail" class="form-input" placeholder="jane@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div style="position:relative">
+            <input type="password" id="regPwd" class="form-input" placeholder="Min. 8 characters" required style="padding-right:2.75rem">
+            <button type="button" onclick="togglePwd('regPwd',this)" style="position:absolute;right:0.7rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:0.9rem">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:.75rem" id="regBtn">
+          <i class="fa-solid fa-user-plus"></i> Create Account
+        </button>
+      </form>
+
+      <a href="/" class="login-back"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('loginForm').style.display    = isLogin ? 'block' : 'none';
+      document.getElementById('registerForm').style.display = isLogin ? 'none'  : 'block';
+      document.getElementById('tabLoginBtn').classList.toggle('active', isLogin);
+      document.getElementById('tabRegBtn').classList.toggle('active', !isLogin);
+      hideError();
+    }
+
+    function fill(email, pwd) {
+      document.getElementById('loginEmail').value = email;
+      document.getElementById('loginPwd').value   = pwd;
+    }
+
+    function togglePwd(id, btn) {
+      const el = document.getElementById(id);
+      const isText = el.type === 'text';
+      el.type = isText ? 'password' : 'text';
+      btn.innerHTML = isText ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+    }
+
+    function showError(msg) {
+      const box  = document.getElementById('errorMsg');
+      const text = document.getElementById('errorText');
+      text.textContent = msg;
+      box.style.display = 'flex';
+    }
+    function hideError() { document.getElementById('errorMsg').style.display = 'none'; }
+
+    function setLoading(btnId, loading) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.disabled = loading;
+      if (loading) {
+        btn.dataset.orig = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner"></span> Please wait…';
+      } else {
+        btn.innerHTML = btn.dataset.orig || 'Submit';
+      }
+    }
+
+    function doLogin(e) {
+      e.preventDefault();
+      hideError();
+      setLoading('loginBtn', true);
+
+      fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email:    document.getElementById('loginEmail').value.trim(),
+          password: document.getElementById('loginPwd').value
+        })
+      })
+      .then(res => {
+        if (!res.ok) return res.json().then(d => { throw new Error(d.message || 'Invalid email or password'); });
+        return res.json();
+      })
+      .then(data => {
+        localStorage.setItem('up_token', data.token);
+        localStorage.setItem('up_email', data.email);
+        window.location.href = '/';
+      })
+      .catch(err => showError(err.message || 'Login failed. Try again.'))
+      .finally(() => setLoading('loginBtn', false));
+    }
+
+    function doRegister(e) {
+      e.preventDefault();
+      hideError();
+      setLoading('regBtn', true);
+
+      fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: document.getElementById('regName').value.trim(),
+          email:    document.getElementById('regEmail').value.trim(),
+          password: document.getElementById('regPwd').value
+        })
+      })
+      .then(res => {
+        if (!res.ok) return res.json().then(d => { throw new Error(d.message || 'Registration failed'); });
+        return res.json();
+      })
+      .then(data => {
+        localStorage.setItem('up_token', data.token);
+        localStorage.setItem('up_email', data.email);
+        window.location.href = '/';
+      })
+      .catch(err => showError(err.message || 'Registration failed. Try again.'))
+      .finally(() => setLoading('regBtn', false));
+    }
+  </script>
+</body>
+</html>
