@@ -47,13 +47,6 @@ docker-compose up -d --build
 
 ---
 
-## 🔑 Default Access Credentials
-
-- **Demo User:** `user@uptimepulse.com` / `password123`
-- **Admin User:** `admin@uptimepulse.com` / `password123`
-
----
-
 ## 📖 API Documentation & Swagger UI
 
 Interactive Swagger documentation is available at:
