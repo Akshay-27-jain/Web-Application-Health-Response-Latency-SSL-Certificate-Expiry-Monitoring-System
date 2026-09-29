@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — UptimePulse Web Health &amp; SSL Monitoring</title>
+  <meta name="description" content="Privacy policy for UptimePulse Web Health, Latency &amp; SSL Expiry Monitoring Platform. Learn how we collect, store and protect your data.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="/" class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+        <span>UptimePulse</span>
+        <span class="brand-tag">SaaS</span>
+      </a>
+      <ul class="nav-menu">
+        <li><a href="/" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a></li>
+        <li><a href="/status.html" class="nav-link">Public Status</a></li>
+        <li><a href="/terms.html" class="nav-link">Terms of Service</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login.html" class="btn btn-primary btn-sm">Sign In</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Content Container -->
+  <main class="container" style="max-width: 860px; padding-top: 3.5rem; padding-bottom: 4rem;">
+    <div class="card" style="padding: 2.5rem;">
+      <div style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-default);">
+        <div class="hero-pill" style="margin-bottom: 0.75rem;">
+          <i class="fa-solid fa-shield-halved"></i> Legal &amp; Compliance
+        </div>
+        <h1 style="font-size: 2.25rem; margin-bottom: 0.5rem;">Privacy Policy</h1>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Effective Date: January 1, 2026 &bull; Last Updated: September 2026</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1.75rem; font-size: 0.95rem; line-height: 1.75; color: var(--text-body);">
+        <section>
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.6rem;">1. Introduction</h2>
+          <p>
+            Welcome to <strong>UptimePulse</strong> ("we", "our", or "us"). We are committed to protecting your privacy and ensuring transparency regarding how your information is handled. This Privacy Policy describes how we collect, store, process, and safeguard your data when using our website health, response latency, and SSL certificate expiration monitoring services.
+          </p>
+        </section>
+
+        <section>
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.6rem;">2. Information We Collect</h2>
+          <p>We collect only the essential information necessary to deliver high-availability synthetic monitoring services:</p>
+          <ul style="margin-left: 1.5rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;">
+            <li><strong>Account Credentials:</strong> Full name, verified email address, and encrypted (BCrypt hashed) passwords.</li>
+            <li><strong>Monitored Target Data:</strong> Target website URLs, hostnames, port numbers, check intervals, and custom labels.</li>
+            <li><strong>Telemetry &amp; Audit Logs:</strong> HTTP status codes, socket latency response times (ms), SSL certificate expiry dates, and alert timestamps.</li>
+            <li><strong>Alert Channel Integrations:</strong> Slack webhook URLs, Discord webhook URLs, and destination email addresses.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.6rem;">3. How We Store and Protect Your Data</h2>
+          <p>
+            All persistent data is securely stored within an isolated, enterprise-grade <strong>PostgreSQL</strong> relational database. Passwords are never stored in plaintext and are protected using industry-standard salted BCrypt password hashing. Communication between your browser and our servers is strictly encrypted via HTTPS / TLS.
+          </p>
+        </section>
+
+        <section>
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.6rem;">4. Cookies &amp; Local Storage</h2>
+          <p>
+            We use strictly necessary browser cookies and <code>localStorage</code> solely for maintaining your authenticated JWT session state and remembering your cookie consent preferences. We do not sell your personal data or utilize intrusive third-party cross-site behavioral tracking cookies.
+          </p>
+        </section>
+
+        <section>
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.6rem;">5. Third-Party Integrations</h2>
+          <p>
+            When you configure external alert notification channels (such as Slack incoming webhooks or Discord channel embeds), alert payloads are transmitted over outbound TLS connections directly to those services. We do not share your private metrics with unauthorized third parties.
+          </p>
+        </section>
+
+        <section>
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.6rem;">6. Your Rights (GDPR &amp; CCPA Compliance)</h2>
+          <p>
+            Depending on your jurisdiction, you have the right to access, rectify, export, or permanently delete your account and associated monitoring targets. To exercise these rights, you may manage your monitors directly via the dashboard or submit a data deletion request.
+          </p>
+        </section>
+
+        <section>
+          <h2 style="font-size: 1.35rem; margin-bottom: 0.6rem;">7. Contact Us</h2>
+          <p>
+            If you have questions, inquiries, or concerns regarding our privacy practices, please contact our security and compliance team at <a href="mailto:privacy@uptimepulse.com">privacy@uptimepulse.com</a>.
+          </p>
+        </section>
+      </div>
+
+      <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-default); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <span style="font-size: 0.85rem; color: var(--text-muted);">&copy; 2026 UptimePulse Monitoring Inc. All rights reserved.</span>
+        <a href="/" class="btn btn-secondary btn-sm"><i class="fa-solid fa-house"></i> Return to Homepage</a>
+      </div>
+    </div>
+  </main>
+
+</body>
+</html>

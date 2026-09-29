@@ -28,7 +28,7 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new RuntimeException("Email already registered: " + normalizedEmail);
+            throw new IllegalArgumentException("Email already registered: " + normalizedEmail);
         }
 
         User user = new User(
@@ -47,10 +47,10 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword().trim(), user.getPassword())) {
-            throw new RuntimeException("Invalid email or password");
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid email or password");
         }
 
         String token = jwtTokenProvider.generateToken(user.getEmail(), user.getId(), user.getRole().name());

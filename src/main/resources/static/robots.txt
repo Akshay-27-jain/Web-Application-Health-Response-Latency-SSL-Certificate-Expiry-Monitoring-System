@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /status.html
+Allow: /privacy.html
+Allow: /terms.html
+Disallow: /api/
+Disallow: /h2-console
+
+Sitemap: https://uptimepulse.com/sitemap.xml

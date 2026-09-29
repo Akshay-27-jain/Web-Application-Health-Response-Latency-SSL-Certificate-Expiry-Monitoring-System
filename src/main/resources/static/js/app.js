@@ -194,8 +194,8 @@ function renderMonitors(monitors) {
     const sslColor = !m.sslDaysRemaining ? 'text-muted' : m.sslDaysRemaining > 30 ? 'text-emerald' : m.sslDaysRemaining > 7 ? 'text-amber' : 'text-rose';
     const sslVal   = m.sslDaysRemaining != null ? `${m.sslDaysRemaining}d` : 'N/A';
     const latVal   = m.lastLatencyMs != null ? `${m.lastLatencyMs} ms` : '— ms';
-    const typeTag  = m.monitorType === 'TCP' ? '<span style="font-size:0.65rem;background:rgba(99,102,241,0.15);color:var(--accent-blue);padding:0.1rem 0.4rem;border-radius:4px;font-weight:700">TCP</span>' : '';
-    const tagBadges = (m.tags || 'production').split(',').map(t => `<span style="font-size:0.65rem;color:var(--text-secondary);background:rgba(255,255,255,0.05);padding:0.1rem 0.35rem;border-radius:4px">#${t.trim()}</span>`).join(' ');
+    const typeTag  = m.monitorType === 'TCP' ? '<span style="font-size:0.65rem;background:var(--primary-light);color:var(--primary);padding:0.15rem 0.45rem;border-radius:var(--radius-sm);font-weight:700">TCP</span>' : '';
+    const tagBadges = (m.tags || 'production').split(',').map(t => `<span style="font-size:0.65rem;color:var(--text-muted);background:var(--bg-surface-alt);border:1px solid var(--border-default);padding:0.15rem 0.4rem;border-radius:var(--radius-sm);font-weight:600">#${t.trim()}</span>`).join(' ');
 
     grid.insertAdjacentHTML('beforeend', `
       <div class="card monitor-card fade-in" id="monitor-card-${m.id}">
@@ -206,7 +206,7 @@ function renderMonitors(monitors) {
               <div class="monitor-name" title="${m.name}">${m.name}</div>
             </div>
             <a href="${m.url}" target="_blank" rel="noopener" class="monitor-url" title="${m.url}">${m.url}</a>
-            <div style="margin-top:0.25rem">${tagBadges}</div>
+            <div style="margin-top:0.4rem;display:flex;gap:0.3rem;flex-wrap:wrap">${tagBadges}</div>
           </div>
           <span class="badge ${badgeClass}">
             <span class="pulse-dot ${pulseClass}"></span> ${statusLabel}
@@ -232,7 +232,7 @@ function renderMonitors(monitors) {
           <div class="sparkline-label"><span>Live Ping History</span><span id="sparkline-val-${m.id}">${latVal}</span></div>
           <div id="sparkline-container-${m.id}">
             <svg class="sparkline-svg" viewBox="0 0 300 30" preserveAspectRatio="none">
-              <line x1="0" y1="15" x2="300" y2="15" stroke="rgba(255,255,255,0.1)" stroke-dasharray="4"/>
+              <line x1="0" y1="15" x2="300" y2="15" stroke="rgba(15,23,42,0.08)" stroke-dasharray="4"/>
             </svg>
           </div>
         </div>
@@ -383,7 +383,7 @@ function openAnalyticsModal(id, name) {
         const isUp = r.status === 'UP';
         const statusColor = isUp ? 'var(--accent-emerald)' : 'var(--accent-rose)';
         return `
-          <tr style="border-bottom:1px solid var(--border-color)">
+          <tr style="border-bottom:1px solid var(--border-default)">
             <td style="padding:0.6rem 0.8rem;color:var(--text-secondary)">${timeStr}</td>
             <td style="padding:0.6rem 0.8rem;font-weight:700;color:${statusColor}">${r.status}</td>
             <td style="padding:0.6rem 0.8rem">${r.statusCode || 200}</td>
