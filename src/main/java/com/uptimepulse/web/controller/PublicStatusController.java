@@ -1,6 +1,7 @@
 package com.uptimepulse.web.controller;
 
 import com.uptimepulse.application.service.MonitorService;
+import com.uptimepulse.domain.enums.MonitorStatus;
 import com.uptimepulse.domain.model.Monitor;
 import com.uptimepulse.domain.model.PingResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/public")
@@ -21,6 +23,34 @@ public class PublicStatusController {
 
     public PublicStatusController(MonitorService monitorService) {
         this.monitorService = monitorService;
+    }
+
+    @GetMapping("/overview")
+    @Operation(summary = "Get global public system overview metrics and active services")
+    public ResponseEntity<Map<String, Object>> getGlobalOverview() {
+        List<Monitor> all = monitorService.getAllMonitors();
+        long total = all.size();
+        long upCount = all.stream().filter(m -> m.getStatus() == MonitorStatus.UP).count();
+        double uptimePct = total > 0 ? (upCount * 100.0) / total : 100.0;
+        double avgLatency = total > 0 ? all.stream().mapToLong(m -> m.getLastLatencyMs() != null ? m.getLastLatencyMs() : 0).average().orElse(0) : 0;
+        long validSsl = all.stream().filter(m -> m.getSslDaysRemaining() != null && m.getSslDaysRemaining() > 30).count();
+        double sslPct = total > 0 ? (validSsl * 100.0) / total : 100.0;
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("totalMonitors", total);
+        res.put("upMonitors", upCount);
+        res.put("uptimePercentage", String.format("%.2f%%", uptimePct));
+        res.put("avgLatencyMs", Math.round(avgLatency));
+        res.put("sslHealthPercentage", String.format("%.1f%%", sslPct));
+        res.put("services", all.stream().limit(8).map(m -> Map.of(
+                "name", m.getName(),
+                "url", m.getUrl(),
+                "status", m.getStatus().name(),
+                "latencyMs", m.getLastLatencyMs() != null ? m.getLastLatencyMs() : 0,
+                "sslDaysRemaining", m.getSslDaysRemaining() != null ? m.getSslDaysRemaining() : 0,
+                "publicId", m.getPublicId() != null ? m.getPublicId() : ""
+        )).collect(Collectors.toList()));
+        return ResponseEntity.ok(res);
     }
 
     @GetMapping("/status/{publicId}")

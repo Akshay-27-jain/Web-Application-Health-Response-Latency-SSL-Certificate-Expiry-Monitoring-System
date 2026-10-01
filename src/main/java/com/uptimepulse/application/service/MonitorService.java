@@ -61,6 +61,10 @@ public class MonitorService {
         return monitorRepository.findByUserId(userId);
     }
 
+    public List<Monitor> getAllMonitors() {
+        return monitorRepository.findAll();
+    }
+
     public Optional<Monitor> getMonitorById(Long id) {
         return monitorRepository.findById(id);
     }

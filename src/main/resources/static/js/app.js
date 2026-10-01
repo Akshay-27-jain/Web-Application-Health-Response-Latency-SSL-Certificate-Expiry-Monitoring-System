@@ -1,254 +1,321 @@
-/* ═══════════════════════════════════════
-   UptimePulse — Dashboard Application Logic
-   Auto-login, API calls, monitors grid,
-   alert feed, real DB sparklines, webhooks, analytics modal, search & filter
-═══════════════════════════════════════ */
+/* ============================================================
+   UPTIMEPULSE — Core Application & Dashboard Client
+   Rock-solid API integration, Auth State Management,
+   SVG Sparklines, Real-Time Pings, and Instant Scanner
+   ============================================================ */
 
-const API = '/api/v1';
-let authToken = localStorage.getItem('up_token') || '';
-let userEmail  = localStorage.getItem('up_email')  || '';
-let monitorsCache = [];
-let activeStatusFilter = 'ALL';
-let searchQuery = '';
+const API_BASE = '/api/v1';
+let token = localStorage.getItem('up_token') || '';
+let userEmail = localStorage.getItem('up_email') || '';
+let userFullName = localStorage.getItem('up_fullname') || '';
+let cachedMonitors = [];
+let currentFilter = 'ALL';
+let currentSearch = '';
 
-/* ─── Bootstrap ─── */
+/* ─── Initialization ─── */
 document.addEventListener('DOMContentLoaded', () => {
-  updateAuthUi();
-  loadSystemInfo();
-  if (authToken) {
-    loadAll();
-  } else {
-    autoLogin();
-  }
-  // Auto-refresh every 30s
-  setInterval(() => { if (authToken) loadAll(); }, 30_000);
+  initAuthState();
+  // Auto-refresh dashboard every 30s
+  setInterval(() => {
+    if (token) {
+      loadMonitors();
+      loadAlerts();
+    }
+  }, 30000);
 });
 
-/* ─── System Probe Info ─── */
-function loadSystemInfo() {
-  fetch(API + '/system/info')
-    .then(r => r.json())
-    .then(d => {
-      const txt = document.getElementById('probeNodeText');
-      if (txt) txt.textContent = `Probe: ${d.probeNode || 'Local Server'}`;
-    })
-    .catch(() => {});
-}
-
-/* ─── Auth UI ─── */
-function updateAuthUi() {
-  const badge  = document.getElementById('userBadge');
-  const btn    = document.getElementById('loginNavBtn');
-  const email  = document.getElementById('userEmailDisplay');
-  const init   = document.getElementById('userInitial');
-  if (authToken) {
-    if (badge) badge.style.display = 'flex';
-    if (btn)   btn.style.display = 'none';
-    if (email) email.textContent = userEmail;
-    if (init)  init.textContent = (userEmail[0] || 'U').toUpperCase();
+/* ─── Authentication Management ─── */
+function initAuthState() {
+  if (token) {
+    // Verify token with backend
+    apiCall('/auth/me', 'GET')
+      .then(user => {
+        userEmail = user.email || userEmail;
+        userFullName = user.fullName || userEmail.split('@')[0];
+        setAuthDisplay(true);
+        loadDashboardData();
+      })
+      .catch(() => {
+        // Token invalid, try auto-login with default demo credentials
+        performAutoLogin();
+      });
   } else {
-    if (badge) badge.style.display = 'none';
-    if (btn)   btn.style.display = 'inline-flex';
+    performAutoLogin();
   }
 }
 
-function autoLogin() {
-  return apiFetch('/auth/login', 'POST', { email: 'user@uptimepulse.com', password: 'password123' }, false)
+function performAutoLogin() {
+  apiCall('/auth/login', 'POST', { email: 'user@uptimepulse.com', password: 'password123' }, false)
     .then(data => {
-      if (data && data.token) storeToken(data);
-      loadAll();
-      return data;
+      saveAuthToken(data);
+      setAuthDisplay(true);
+      loadDashboardData();
     })
-    .catch(() => loadAll());
+    .catch(() => {
+      // Offline or guest mode: load public overview data
+      setAuthDisplay(false);
+      loadPublicOverview();
+    });
 }
 
-function storeToken(data) {
-  authToken = data.token;
-  userEmail  = data.email || '';
-  localStorage.setItem('up_token', authToken);
+function saveAuthToken(data) {
+  token = data.token;
+  userEmail = data.email || '';
+  userFullName = data.fullName || userEmail.split('@')[0] || 'User';
+  localStorage.setItem('up_token', token);
   localStorage.setItem('up_email', userEmail);
-  updateAuthUi();
+  localStorage.setItem('up_fullname', userFullName);
+}
+
+function setAuthDisplay(isLoggedIn) {
+  const loggedInNav = document.getElementById('loggedInNav');
+  const loggedOutNav = document.getElementById('loggedOutNav');
+  const nameDisplay = document.getElementById('userNameDisplay');
+  const initial = document.getElementById('userInitial');
+
+  if (isLoggedIn) {
+    if (loggedInNav) loggedInNav.style.display = 'flex';
+    if (loggedOutNav) loggedOutNav.style.display = 'none';
+    if (nameDisplay) nameDisplay.textContent = userFullName || userEmail;
+    if (initial) initial.textContent = (userFullName || userEmail || 'U')[0].toUpperCase();
+  } else {
+    if (loggedInNav) loggedInNav.style.display = 'none';
+    if (loggedOutNav) loggedOutNav.style.display = 'flex';
+  }
 }
 
 function handleLogout() {
-  authToken = '';
-  userEmail  = '';
+  token = '';
+  userEmail = '';
+  userFullName = '';
   localStorage.removeItem('up_token');
   localStorage.removeItem('up_email');
-  updateAuthUi();
-  monitorsCache = [];
+  localStorage.removeItem('up_fullname');
+  setAuthDisplay(false);
+  cachedMonitors = [];
   renderMonitors([]);
   renderAlertFeed([]);
-  updateStats([]);
-  toast('Logged out successfully', 'info');
-  setTimeout(() => openAuthModal('login'), 400);
+  toast('Signed out successfully.', 'info');
+  loadPublicOverview();
 }
 
-/* ─── Load Everything ─── */
-function loadAll() {
-  loadMonitors();
-  loadAlerts();
-}
-
-function refreshAll() {
-  const btn = document.getElementById('refreshBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-  Promise.all([loadMonitors(), loadAlerts()]).finally(() => {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh'; }
-    toast('Dashboard refreshed!', 'success');
-  });
-}
-
-/* ─── Generic API fetch ─── */
-function apiFetch(path, method = 'GET', body = null, auth = true) {
+/* ─── Generic API Helper ─── */
+function apiCall(endpoint, method = 'GET', body = null, requireAuth = true) {
   const headers = { 'Content-Type': 'application/json' };
-  if (auth && authToken) headers['Authorization'] = `Bearer ${authToken}`;
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(API + path, opts)
+  if (requireAuth && token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const options = { method, headers };
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+
+  return fetch(API_BASE + endpoint, options)
     .then(res => {
       if (res.status === 401 || res.status === 403) {
-        // Clear stale token & auto-relogin
-        localStorage.removeItem('up_token');
-        authToken = '';
-        updateAuthUi();
-        autoLogin();
-        throw new Error('Session refreshed. Please submit again.');
+        if (requireAuth) {
+          token = '';
+          localStorage.removeItem('up_token');
+          setAuthDisplay(false);
+        }
+        throw new Error('Unauthorized');
       }
-      if (!res.ok) return res.json().then(e => { throw new Error(e.message || 'Request failed'); });
+      if (!res.ok) {
+        return res.json().then(err => { throw new Error(err.message || 'Request failed'); });
+      }
       return res.json();
     });
 }
 
-/* ─── Search & Filter Controls ─── */
-function filterByStatus(status, btn) {
-  activeStatusFilter = status;
-  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  applyFilters();
+/* ─── Dashboard Data Loading ─── */
+function loadDashboardData() {
+  loadMonitors();
+  loadAlerts();
 }
 
-function handleSearch(query) {
-  searchQuery = (query || '').toLowerCase().trim();
-  applyFilters();
-}
-
-function applyFilters() {
-  let filtered = monitorsCache.slice();
-
-  if (activeStatusFilter === 'UP') {
-    filtered = filtered.filter(m => m.status === 'UP');
-  } else if (activeStatusFilter === 'ISSUES') {
-    filtered = filtered.filter(m => m.status !== 'UP');
+function refreshMonitors() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
   }
 
-  if (searchQuery) {
-    filtered = filtered.filter(m =>
-      (m.name || '').toLowerCase().includes(searchQuery) ||
-      (m.url || '').toLowerCase().includes(searchQuery) ||
-      (m.tags || '').toLowerCase().includes(searchQuery)
+  Promise.all([loadMonitors(), loadAlerts()])
+    .finally(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh';
+      }
+      toast('Dashboard updated with latest probe metrics.', 'success');
+    });
+}
+
+function loadMonitors() {
+  return apiCall('/monitors')
+    .then(list => {
+      cachedMonitors = Array.isArray(list) ? list : [];
+      updateKpis(cachedMonitors);
+      filterAndRender();
+      // Load historical sparkline curves for each monitor
+      cachedMonitors.forEach(m => fetchSparkline(m.id, m.status));
+      return cachedMonitors;
+    })
+    .catch(() => {
+      loadPublicOverview();
+    });
+}
+
+function loadPublicOverview() {
+  apiCall('/public/overview', 'GET', null, false)
+    .then(overview => {
+      document.getElementById('kpiUptime').textContent = overview.uptimePercentage || '100%';
+      document.getElementById('kpiMonitors').textContent = overview.totalMonitors || '0';
+      document.getElementById('kpiLatency').textContent = (overview.avgLatencyMs || '0') + ' ms';
+      document.getElementById('kpiSSL').textContent = overview.sslHealthPercentage || '100% Valid';
+
+      if (overview.services && overview.services.length) {
+        const publicList = overview.services.map((s, idx) => ({
+          id: idx + 1,
+          name: s.name,
+          url: s.url,
+          status: s.status,
+          lastLatencyMs: s.latencyMs,
+          sslDaysRemaining: s.sslDaysRemaining,
+          checkIntervalMinutes: 3,
+          tags: 'public, production',
+          publicId: s.publicId
+        }));
+        cachedMonitors = publicList;
+        filterAndRender();
+      }
+    })
+    .catch(() => {});
+}
+
+/* ─── Search & Status Filtering ─── */
+function applyStatusFilter(status, btn) {
+  currentFilter = status;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  filterAndRender();
+}
+
+function handleSearchFilter(query) {
+  currentSearch = (query || '').toLowerCase().trim();
+  filterAndRender();
+}
+
+function filterAndRender() {
+  let list = cachedMonitors.slice();
+
+  if (currentFilter === 'UP') {
+    list = list.filter(m => m.status === 'UP');
+  } else if (currentFilter === 'ISSUES') {
+    list = list.filter(m => m.status !== 'UP');
+  }
+
+  if (currentSearch) {
+    list = list.filter(m =>
+      (m.name || '').toLowerCase().includes(currentSearch) ||
+      (m.url || '').toLowerCase().includes(currentSearch) ||
+      (m.tags || '').toLowerCase().includes(currentSearch)
     );
   }
 
-  renderMonitors(filtered);
+  renderMonitors(list);
 }
 
-/* ─── Monitors ─── */
-function loadMonitors() {
-  return apiFetch('/monitors')
-    .then(data => {
-      const list = Array.isArray(data) ? data : [];
-      monitorsCache = list;
-      applyFilters();
-      updateStats(list);
-      list.forEach(m => loadMonitorHistory(m.id, m.status));
-      return list;
-    })
-    .catch(err => { console.warn('[monitors]', err); renderMonitors([]); updateStats([]); });
-}
-
+/* ─── Render Monitors Grid ─── */
 function renderMonitors(monitors) {
-  const grid = document.getElementById('monitorsGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
+  const container = document.getElementById('monitorsContainer');
+  if (!container) return;
+  container.innerHTML = '';
 
   if (!monitors || monitors.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state card">
-        <i class="fa-solid fa-satellite-dish"></i>
-        <p>No website monitors match your filter.<br>Add one to start tracking uptime.</p>
-        <button class="btn btn-primary" onclick="openAddMonitorModal()">
-          <i class="fa-solid fa-plus"></i> Add First Monitor
+    container.innerHTML = `
+      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
+        <i class="fa-solid fa-satellite-dish" style="font-size: 2.25rem; color: var(--primary); margin-bottom: 0.75rem; display: block;"></i>
+        <h4 style="color: var(--text-title); margin-bottom: 0.25rem;">No Monitored Targets Found</h4>
+        <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">No active probes match your search criteria.</p>
+        <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
+          <i class="fa-solid fa-plus"></i> Add Your First Target
         </button>
       </div>`;
     return;
   }
 
   monitors.forEach(m => {
-    const isUp  = m.status === 'UP';
+    const isUp = m.status === 'UP';
     const isDeg = m.status === 'DEGRADED';
-    const badgeClass   = isUp ? 'badge-up' : (isDeg ? 'badge-degraded' : 'badge-down');
-    const pulseClass   = isUp ? 'pulse-green' : (isDeg ? 'pulse-amber' : 'pulse-red');
-    const statusLabel  = m.status || 'PENDING';
-    const latencyColor = isUp ? 'text-emerald' : (isDeg ? 'text-amber' : 'text-rose');
-    const sslColor = !m.sslDaysRemaining ? 'text-muted' : m.sslDaysRemaining > 30 ? 'text-emerald' : m.sslDaysRemaining > 7 ? 'text-amber' : 'text-rose';
-    const sslVal   = m.sslDaysRemaining != null ? `${m.sslDaysRemaining}d` : 'N/A';
-    const latVal   = m.lastLatencyMs != null ? `${m.lastLatencyMs} ms` : '— ms';
-    const typeTag  = m.monitorType === 'TCP' ? '<span style="font-size:0.65rem;background:var(--primary-light);color:var(--primary);padding:0.15rem 0.45rem;border-radius:var(--radius-sm);font-weight:700">TCP</span>' : '';
-    const tagBadges = (m.tags || 'production').split(',').map(t => `<span style="font-size:0.65rem;color:var(--text-muted);background:var(--bg-surface-alt);border:1px solid var(--border-default);padding:0.15rem 0.4rem;border-radius:var(--radius-sm);font-weight:600">#${t.trim()}</span>`).join(' ');
+    const badgeCls = isUp ? 'badge-up' : (isDeg ? 'badge-degraded' : 'badge-down');
+    const pulseCls = isUp ? 'pulse-green' : (isDeg ? 'pulse-amber' : 'pulse-red');
+    const statusText = m.status || 'PENDING';
+    const latText = m.lastLatencyMs != null ? `${m.lastLatencyMs} ms` : '— ms';
+    const latColor = isUp ? 'text-emerald' : (isDeg ? 'text-amber' : 'text-rose');
+    const sslText = m.sslDaysRemaining != null ? `${m.sslDaysRemaining}d` : 'N/A';
+    const sslColor = !m.sslDaysRemaining ? 'var(--text-muted)' : m.sslDaysRemaining > 30 ? 'var(--success)' : 'var(--warning)';
+    const typeBadge = m.monitorType === 'TCP' ? '<span style="font-size:0.65rem;background:var(--primary-light);color:var(--primary);padding:0.1rem 0.4rem;border-radius:4px;font-weight:700;">TCP</span>' : '';
+    const tagBadges = (m.tags || 'production').split(',').map(t => `<span style="font-size:0.65rem;color:var(--text-muted);background:var(--bg-card-muted);border:1px solid var(--border);padding:0.1rem 0.35rem;border-radius:4px;">#${t.trim()}</span>`).join(' ');
 
-    grid.insertAdjacentHTML('beforeend', `
-      <div class="card monitor-card fade-in" id="monitor-card-${m.id}">
-        <div class="monitor-top">
-          <div style="overflow:hidden">
-            <div style="display:flex;align-items:center;gap:0.35rem">
-              ${typeTag}
-              <div class="monitor-name" title="${m.name}">${m.name}</div>
+    container.insertAdjacentHTML('beforeend', `
+      <div class="card monitor-box" id="monitor-${m.id}">
+        <div>
+          <div class="monitor-box-head">
+            <div style="overflow: hidden;">
+              <div style="display: flex; align-items: center; gap: 0.35rem;">
+                ${typeBadge}
+                <span class="monitor-title" title="${m.name}">${m.name}</span>
+              </div>
+              <a href="${m.url}" target="_blank" rel="noopener" class="monitor-link" title="${m.url}">${m.url}</a>
+              <div style="margin-top: 0.35rem; display: flex; gap: 0.3rem; flex-wrap: wrap;">${tagBadges}</div>
             </div>
-            <a href="${m.url}" target="_blank" rel="noopener" class="monitor-url" title="${m.url}">${m.url}</a>
-            <div style="margin-top:0.4rem;display:flex;gap:0.3rem;flex-wrap:wrap">${tagBadges}</div>
+            <span class="badge ${badgeCls}">
+              <span class="pulse-dot ${pulseCls}"></span> ${statusText}
+            </span>
           </div>
-          <span class="badge ${badgeClass}">
-            <span class="pulse-dot ${pulseClass}"></span> ${statusLabel}
-          </span>
+
+          <div class="monitor-mini-stats">
+            <div>
+              <div class="mini-stat-lbl">Latency</div>
+              <div class="mini-stat-val ${latColor}">${latText}</div>
+            </div>
+            <div>
+              <div class="mini-stat-lbl">Interval</div>
+              <div class="mini-stat-val">${m.checkIntervalMinutes || 3}m</div>
+            </div>
+            <div>
+              <div class="mini-stat-lbl">SSL Valid</div>
+              <div class="mini-stat-val" style="color:${sslColor}">${sslText}</div>
+            </div>
+          </div>
+
+          <div class="sparkline-box">
+            <div class="sparkline-head">
+              <span>Live Response Curve</span>
+              <span id="sparkline-val-${m.id}">${latText}</span>
+            </div>
+            <div id="sparkline-${m.id}">
+              <svg class="sparkline-svg" viewBox="0 0 300 28" preserveAspectRatio="none">
+                <line x1="0" y1="14" x2="300" y2="14" stroke="rgba(15,23,42,0.08)" stroke-dasharray="4"/>
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div class="monitor-stats-row">
-          <div class="monitor-stat">
-            <div class="monitor-stat-label">Latency</div>
-            <div class="monitor-stat-val ${latencyColor}">${latVal}</div>
-          </div>
-          <div class="monitor-stat">
-            <div class="monitor-stat-label">Interval</div>
-            <div class="monitor-stat-val">${m.checkIntervalMinutes}m</div>
-          </div>
-          <div class="monitor-stat">
-            <div class="monitor-stat-label">SSL Exp.</div>
-            <div class="monitor-stat-val ${sslColor}">${sslVal}</div>
-          </div>
-        </div>
-
-        <div class="sparkline-wrap">
-          <div class="sparkline-label"><span>Live Ping History</span><span id="sparkline-val-${m.id}">${latVal}</span></div>
-          <div id="sparkline-container-${m.id}">
-            <svg class="sparkline-svg" viewBox="0 0 300 30" preserveAspectRatio="none">
-              <line x1="0" y1="15" x2="300" y2="15" stroke="rgba(15,23,42,0.08)" stroke-dasharray="4"/>
-            </svg>
-          </div>
-        </div>
-
-        <div class="monitor-footer">
+        <div class="monitor-box-foot">
           <button class="btn btn-outline btn-sm" onclick="openAnalyticsModal(${m.id}, '${m.name.replace(/'/g, "\\'")}')">
             <i class="fa-solid fa-chart-line"></i> Analytics
           </button>
-          <div class="monitor-actions">
-            <a href="/status.html?id=${m.publicId || ''}" target="_blank" class="btn btn-outline btn-sm btn-icon" title="Public Status">
+
+          <div class="monitor-btns">
+            <a href="/status.html?id=${m.publicId || ''}" target="_blank" class="btn btn-outline btn-sm btn-icon" title="View Public Status">
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </a>
-            <button class="btn btn-outline btn-sm btn-icon" title="Ping Now" onclick="pingMonitor(${m.id})">
+            <button class="btn btn-outline btn-sm btn-icon" title="Ping Now" onclick="triggerManualPing(${m.id})">
               <i class="fa-solid fa-rotate"></i>
             </button>
-            <button class="btn btn-danger btn-sm btn-icon" title="Delete" onclick="deleteMonitor(${m.id}, '${m.name.replace(/'/g, "\\'")}')">
+            <button class="btn btn-danger btn-sm btn-icon" title="Delete Monitor" onclick="deleteTarget(${m.id}, '${m.name.replace(/'/g, "\\'")}')">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
@@ -258,143 +325,198 @@ function renderMonitors(monitors) {
   });
 }
 
-/* ─── Real DB Sparkline Renderer ─── */
-function loadMonitorHistory(monitorId, status) {
-  apiFetch(`/monitors/${monitorId}/history`)
+/* ─── Real DB Sparkline Generation ─── */
+function fetchSparkline(monitorId, status) {
+  apiCall(`/monitors/${monitorId}/history`, 'GET')
     .then(history => {
-      const container = document.getElementById(`sparkline-container-${monitorId}`);
+      const container = document.getElementById(`sparkline-${monitorId}`);
       if (!container || !Array.isArray(history) || history.length === 0) return;
 
-      const pts = history.slice().reverse().map(h => h.latencyMs || 10);
+      const points = history.slice().reverse().map(h => h.latencyMs || 10);
       const isUp = status === 'UP';
-      const isDeg = status === 'DEGRADED';
-      const strokeColor = isUp ? '#10b981' : (isDeg ? '#f59e0b' : '#f43f5e');
+      const strokeColor = isUp ? '#059669' : '#e11d48';
 
-      const min = Math.min(...pts), max = Math.max(...pts, min + 1);
-      const W = 300, H = 30, pad = 4;
-      const svgPts = pts.map((v, i) => {
-        const x = pad + (pts.length > 1 ? (i * (W - 2 * pad) / (pts.length - 1)) : W / 2);
+      const min = Math.min(...points), max = Math.max(...points, min + 1);
+      const W = 300, H = 28, pad = 3;
+      const svgPoints = points.map((v, i) => {
+        const x = pad + (points.length > 1 ? (i * (W - 2 * pad) / (points.length - 1)) : W / 2);
         const y = H - pad - ((v - min) / (max - min)) * (H - 2 * pad);
-        return `${x},${y}`;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
       }).join(' ');
 
       container.innerHTML = `
         <svg class="sparkline-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-          <polyline fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${svgPts}"/>
+          <polyline fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${svgPoints}"/>
         </svg>`;
     })
     .catch(() => {});
 }
 
-/* ─── Stats Metrics ─── */
-function updateStats(monitors) {
-  const total  = monitors.length;
-  const up     = monitors.filter(m => m.status === 'UP').length;
-  const uptimePct = total ? ((up / total) * 100).toFixed(1) + '%' : '100%';
-  const avgLat = total
-    ? Math.round(monitors.reduce((s, m) => s + (m.lastLatencyMs || 0), 0) / total) + ' ms'
+/* ─── KPI Calculations ─── */
+function updateKpis(monitors) {
+  const total = monitors.length;
+  const up = monitors.filter(m => m.status === 'UP').length;
+  const uptimePct = total > 0 ? ((up / total) * 100).toFixed(2) + '%' : '100%';
+  const avgLat = total > 0
+    ? Math.round(monitors.reduce((acc, m) => acc + (m.lastLatencyMs || 0), 0) / total) + ' ms'
     : '0 ms';
-  const goodSSL = monitors.filter(m => (m.sslDaysRemaining || 0) > 30).length;
-  const sslPct  = total ? Math.round((goodSSL / total) * 100) + '% Valid' : '100% Valid';
+  const validSsl = monitors.filter(m => (m.sslDaysRemaining || 0) > 30).length;
+  const sslPct = total > 0 ? Math.round((validSsl / total) * 100) + '% Valid' : '100% Valid';
 
-  setText('statUptime',  uptimePct);
-  setText('statMonitors', total);
-  setText('statLatency',  avgLat);
-  setText('statSSL',      sslPct);
+  document.getElementById('kpiUptime').textContent = uptimePct;
+  document.getElementById('kpiMonitors').textContent = total;
+  document.getElementById('kpiLatency').textContent = avgLat;
+  document.getElementById('kpiSSL').textContent = sslPct;
 
-  const uptimeMeta = total ? `${up} of ${total} sites online` : 'All monitors operational';
-  setText('statUptimeMeta',   uptimeMeta);
-  setText('statMonitorsMeta', total ? 'Health & SSL checks running' : 'Active monitoring enabled');
-  setText('statSSLMeta',      total ? `${goodSSL} certs > 30 days valid` : 'All certificates valid');
+  document.getElementById('kpiUptimeMeta').textContent = total ? `${up} of ${total} targets online` : 'All targets healthy';
+  document.getElementById('kpiMonitorsMeta').textContent = total ? 'Non-blocking NIO probe active' : 'Synthetic probing active';
+  document.getElementById('kpiSSLMeta').textContent = total ? `${validSsl} certs > 30 days remaining` : 'All certificates valid';
 }
 
-/* ─── Alerts ─── */
-function loadAlerts() {
-  return apiFetch('/monitors/alerts')
-    .then(data => renderAlertFeed(Array.isArray(data) ? data : []))
-    .catch(() => renderAlertFeed([]));
+/* ─── Manual Ping ─── */
+function triggerManualPing(id) {
+  toast('Sending immediate synthetic probe...', 'info');
+  apiCall(`/monitors/${id}/ping`, 'POST')
+    .then(result => {
+      const isUp = result.status === 'UP';
+      toast(`Probe Response: ${result.status} (${result.latencyMs} ms)`, isUp ? 'success' : 'error');
+      loadMonitors();
+    })
+    .catch(err => {
+      toast('Ping failed: ' + err.message, 'error');
+    });
 }
 
-function renderAlertFeed(alerts) {
-  const feed  = document.getElementById('alertFeed');
-  const badge = document.getElementById('alertCountBadge');
-  if (!feed) return;
+/* ─── Delete Monitor ─── */
+function deleteTarget(id, name) {
+  if (!confirm(`Delete monitor "${name}" and all historical ping data?`)) return;
+  apiCall(`/monitors/${id}`, 'DELETE')
+    .then(() => {
+      toast('Monitor deleted successfully.', 'success');
+      loadMonitors();
+    })
+    .catch(err => toast('Delete failed: ' + err.message, 'error'));
+}
 
-  if (!alerts || alerts.length === 0) {
-    feed.innerHTML = `
-      <div class="no-alerts">
-        <i class="fa-solid fa-shield-check"></i>
-        <strong style="display:block;margin-bottom:0.3rem">All Clear!</strong>
-        No downtime or SSL alerts detected.
-      </div>`;
-    if (badge) badge.style.display = 'none';
+/* ─── Create Monitor ─── */
+function openAddMonitorModal() {
+  document.getElementById('addMonitorModal').style.display = 'flex';
+}
+
+function closeAddMonitorModal() {
+  document.getElementById('addMonitorModal').style.display = 'none';
+}
+
+function handleCreateMonitor(e) {
+  e.preventDefault();
+  const btn = document.getElementById('addMonitorBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+  const body = {
+    name: document.getElementById('monName').value.trim(),
+    url: document.getElementById('monUrl').value.trim(),
+    monitorType: document.getElementById('monType').value,
+    interval: parseInt(document.getElementById('monInterval').value, 10),
+    tags: document.getElementById('monTags').value.trim() || 'production'
+  };
+
+  apiCall('/monitors', 'POST', body)
+    .then(() => {
+      toast('Target monitor added and initial probe initiated!', 'success');
+      closeAddMonitorModal();
+      document.getElementById('addMonitorForm').reset();
+      loadMonitors();
+    })
+    .catch(err => toast('Failed to add monitor: ' + err.message, 'error'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-plus"></i> Create Target';
+    });
+}
+
+/* ─── Instant Scanner Bar ─── */
+function runInstantScan() {
+  const url = (document.getElementById('scannerUrl').value || '').trim();
+  if (!url) {
+    toast('Please enter a target URL or IP.', 'error');
     return;
   }
 
-  if (badge) { badge.textContent = alerts.length; badge.style.display = 'inline'; }
+  const resultsArea = document.getElementById('scannerResults');
+  resultsArea.style.display = 'grid';
+  document.getElementById('scanHost').textContent = url;
+  document.getElementById('scanLatency').textContent = 'Scanning...';
+  document.getElementById('scanSSL').textContent = 'Probing...';
+  document.getElementById('scanStatusBadge').innerHTML = '<span class="spinner"></span>';
 
-  feed.innerHTML = '';
-  alerts.slice(0, 20).forEach(a => {
-    const timeStr = a.sentAt
-      ? new Date(a.sentAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-      : 'Recently';
-    const channelTag = a.channelType && a.channelType !== 'LOG_ONLY' ? ` [${a.channelType}]` : '';
-    feed.insertAdjacentHTML('beforeend', `
-      <div class="alert-item">
-        <div class="alert-item-header">
-          <span class="alert-item-tag"><i class="fa-solid fa-triangle-exclamation"></i> ALERT${channelTag}</span>
-          <span class="alert-item-time">${timeStr}</span>
-        </div>
-        <div class="alert-item-msg">${a.alertMessage || 'Downtime detected'}</div>
-      </div>
-    `);
-  });
+  apiCall('/monitors/scan', 'POST', { url: url }, false)
+    .then(data => {
+      const status = data.status || 'UP';
+      const latVal = data.latencyMs != null ? data.latencyMs : data.lastLatencyMs;
+      const isUp = status === 'UP';
+      const badgeCls = isUp ? 'badge-up' : 'badge-down';
+      const pulseCls = isUp ? 'pulse-green' : 'pulse-red';
+      const sslDays = data.sslDaysRemaining != null && data.sslDaysRemaining > 0 ? `${data.sslDaysRemaining} Days` : 'N/A';
+
+      document.getElementById('scanStatusBadge').innerHTML = `
+        <span class="badge ${badgeCls}"><span class="pulse-dot ${pulseCls}"></span> ${status}</span>`;
+      document.getElementById('scanLatency').textContent = latVal != null ? `${latVal} ms` : '—';
+      document.getElementById('scanSSL').textContent = sslDays;
+      toast('Instant probe completed successfully.', 'success');
+    })
+    .catch(err => {
+      document.getElementById('scanStatusBadge').innerHTML = '<span class="badge badge-down">FAILED</span>';
+      document.getElementById('scanLatency').textContent = 'Error';
+      document.getElementById('scanSSL').textContent = 'Error';
+      toast('Scan error: ' + err.message, 'error');
+    });
 }
 
-/* ─── Analytics Modal ─── */
+/* ─── Analytics Deep-Dive Modal ─── */
 function openAnalyticsModal(id, name) {
   document.getElementById('analyticsModal').style.display = 'flex';
-  document.getElementById('analyticsTitle').innerHTML = `<i class="fa-solid fa-chart-line" style="color:var(--accent-blue)"></i> ${name} — Performance Logs`;
+  document.getElementById('analyticsTitle').innerHTML = `<i class="fa-solid fa-chart-line" style="color:var(--primary)"></i> ${name} — Performance Analytics`;
 
-  const tbody = document.getElementById('analyticsLogsTable');
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;color:var(--text-secondary)"><span class="spinner"></span> Loading logs...</td></tr>';
+  const tbody = document.getElementById('analyticsLogsBody');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-muted);"><span class="spinner"></span> Loading historical logs...</td></tr>';
 
-  apiFetch(`/monitors/${id}/results`)
+  apiCall(`/monitors/${id}/results`)
     .then(results => {
       if (!results || results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;color:var(--text-secondary)">No health checks recorded yet.</td></tr>';
-        setText('analyticsMinLat', '—');
-        setText('analyticsAvgLat', '—');
-        setText('analyticsMaxLat', '—');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-muted);">No recorded checks yet. Initial probe running.</td></tr>';
+        document.getElementById('anaMinLat').textContent = '—';
+        document.getElementById('anaAvgLat').textContent = '—';
+        document.getElementById('anaMaxLat').textContent = '—';
         return;
       }
 
       const lats = results.map(r => r.latencyMs || 0).filter(l => l > 0);
       const min = lats.length ? Math.min(...lats) + ' ms' : '—';
       const max = lats.length ? Math.max(...lats) + ' ms' : '—';
-      const avg = lats.length ? Math.round(lats.reduce((a,b)=>a+b,0)/lats.length) + ' ms' : '—';
+      const avg = lats.length ? Math.round(lats.reduce((a, b) => a + b, 0) / lats.length) + ' ms' : '—';
 
-      setText('analyticsMinLat', min);
-      setText('analyticsAvgLat', avg);
-      setText('analyticsMaxLat', max);
+      document.getElementById('anaMinLat').textContent = min;
+      document.getElementById('anaAvgLat').textContent = avg;
+      document.getElementById('anaMaxLat').textContent = max;
 
       tbody.innerHTML = results.map(r => {
-        const timeStr = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : 'Recently';
+        const timeStr = r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : 'Recent';
         const isUp = r.status === 'UP';
-        const statusColor = isUp ? 'var(--accent-emerald)' : 'var(--accent-rose)';
+        const statusColor = isUp ? 'var(--success)' : 'var(--danger)';
         return `
-          <tr style="border-bottom:1px solid var(--border-default)">
-            <td style="padding:0.6rem 0.8rem;color:var(--text-secondary)">${timeStr}</td>
-            <td style="padding:0.6rem 0.8rem;font-weight:700;color:${statusColor}">${r.status}</td>
-            <td style="padding:0.6rem 0.8rem">${r.statusCode || 200}</td>
-            <td style="padding:0.6rem 0.8rem">${r.latencyMs || 0} ms</td>
-            <td style="padding:0.6rem 0.8rem">${r.sslDaysRemaining != null ? r.sslDaysRemaining + 'd' : 'N/A'}</td>
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 0.5rem 0.75rem; color: var(--text-muted);">${timeStr}</td>
+            <td style="padding: 0.5rem 0.75rem; font-weight: 700; color: ${statusColor};">${r.status}</td>
+            <td style="padding: 0.5rem 0.75rem;">${r.statusCode || 200}</td>
+            <td style="padding: 0.5rem 0.75rem;">${r.latencyMs || 0} ms</td>
+            <td style="padding: 0.5rem 0.75rem;">${r.sslDaysRemaining != null ? r.sslDaysRemaining + 'd' : 'N/A'}</td>
           </tr>
         `;
       }).join('');
     })
     .catch(() => {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1rem;color:var(--accent-rose)">Failed to load results.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--danger);">Failed to retrieve historical telemetry.</td></tr>';
     });
 }
 
@@ -402,288 +524,137 @@ function closeAnalyticsModal() {
   document.getElementById('analyticsModal').style.display = 'none';
 }
 
-/* ─── Ping Monitor ─── */
-function pingMonitor(id) {
-  toast('Pinging…', 'info');
-  apiFetch(`/monitors/${id}/ping`, 'POST')
-    .then(data => {
-      toast(`Ping: ${data.status} — ${data.latencyMs} ms`, data.status === 'UP' ? 'success' : 'error');
-      loadMonitors();
-    })
-    .catch(err => toast('Ping failed: ' + err.message, 'error'));
+/* ─── Alert Feed ─── */
+function loadAlerts() {
+  return apiCall('/monitors/alerts')
+    .then(alerts => renderAlertFeed(Array.isArray(alerts) ? alerts : []))
+    .catch(() => renderAlertFeed([]));
 }
 
-/* ─── Delete Monitor ─── */
-function deleteMonitor(id, name) {
-  if (!confirm(`Delete monitor "${name}"?`)) return;
-  apiFetch(`/monitors/${id}`, 'DELETE')
-    .then(() => { toast('Monitor deleted', 'success'); loadMonitors(); })
-    .catch(err => toast('Delete failed: ' + err.message, 'error'));
-}
+function renderAlertFeed(alerts) {
+  const feed = document.getElementById('alertFeedContainer');
+  if (!feed) return;
 
-/* ─── Add Monitor ─── */
-function handleAddMonitor(e) {
-  e.preventDefault();
-  const btn = document.getElementById('addMonitorSubmitBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Creating…';
-
-  const sendCreate = () => {
-    apiFetch('/monitors', 'POST', {
-      name:        document.getElementById('monName').value,
-      url:         document.getElementById('monUrl').value,
-      monitorType: document.getElementById('monType').value,
-      tags:        document.getElementById('monTags').value,
-      interval:    parseInt(document.getElementById('monInterval').value)
-    })
-    .then(() => {
-      toast('Monitor created!', 'success');
-      closeAddMonitorModal();
-      document.getElementById('addMonitorForm').reset();
-      loadMonitors();
-    })
-    .catch(err => toast('Failed: ' + err.message, 'error'))
-    .finally(() => {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-plus"></i> Create Monitor';
-    });
-  };
-
-  if (!authToken) {
-    autoLogin().then(sendCreate).catch(sendCreate);
-  } else {
-    sendCreate();
-  }
-}
-
-/* ─── Webhook Notifications Channel Management ─── */
-function openNotificationsModal() {
-  if (!authToken) {
-    autoLogin().then(() => {
-      document.getElementById('notificationsModal').style.display = 'flex';
-      loadNotificationChannels();
-    });
+  if (!alerts || alerts.length === 0) {
+    feed.innerHTML = `
+      <div class="empty-feed">
+        <i class="fa-solid fa-shield-check"></i>
+        <strong style="display:block;color:var(--text-title);margin-bottom:0.2rem">All Systems Operational</strong>
+        Zero downtime or SSL expiration alerts detected.
+      </div>`;
     return;
   }
-  document.getElementById('notificationsModal').style.display = 'flex';
-  loadNotificationChannels();
+
+  feed.innerHTML = '';
+  alerts.slice(0, 15).forEach(a => {
+    const timeStr = a.sentAt
+      ? new Date(a.sentAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : 'Recently';
+    const chan = a.channelType && a.channelType !== 'LOG_ONLY' ? ` &bull; ${a.channelType}` : '';
+
+    feed.insertAdjacentHTML('beforeend', `
+      <div class="alert-card">
+        <div class="alert-card-head">
+          <span class="alert-tag"><i class="fa-solid fa-triangle-exclamation"></i> INCIDENT${chan}</span>
+          <span class="alert-time">${timeStr}</span>
+        </div>
+        <div class="alert-text">${a.alertMessage || 'Downtime detected on probe target.'}</div>
+      </div>
+    `);
+  });
 }
+
+/* ─── Webhook Notification Channels ─── */
+function openNotificationsModal() {
+  document.getElementById('notificationsModal').style.display = 'flex';
+  loadWebhooks();
+}
+
 function closeNotificationsModal() {
   document.getElementById('notificationsModal').style.display = 'none';
 }
 
-function loadNotificationChannels() {
-  const container = document.getElementById('notificationsList');
-  if (!container) return;
+function loadWebhooks() {
+  const container = document.getElementById('webhooksList');
+  container.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);"><span class="spinner"></span> Loading channels...</div>';
 
-  apiFetch('/notifications')
-    .then(configs => {
-      if (!configs || configs.length === 0) {
-        container.innerHTML = `<p style="font-size:0.85rem;color:var(--text-secondary);text-align:center;padding:1rem">No webhooks or Slack/Discord channels configured yet.</p>`;
+  apiCall('/notifications')
+    .then(channels => {
+      if (!channels || channels.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:0.85rem;">No webhook channels connected. Add Slack or Discord below.</div>';
         return;
       }
-      container.innerHTML = configs.map(c => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 1rem;background:rgba(255,255,255,0.03);border:1px solid var(--border-color);border-radius:var(--radius-md);margin-bottom:0.5rem">
+
+      container.innerHTML = channels.map(c => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.6rem 0.85rem;background:var(--bg-card-muted);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:0.5rem;">
           <div>
-            <div style="font-size:0.9rem;font-weight:700;color:#fff">${c.name}</div>
-            <div style="font-size:0.75rem;color:var(--text-secondary)">Type: <strong style="color:var(--accent-violet)">${c.channelType}</strong> — ${c.webhookUrl}</div>
+            <strong style="font-size:0.85rem;color:var(--text-title);display:block;">${c.channelName}</strong>
+            <span style="font-size:0.75rem;color:var(--text-muted);">${c.channelType} &bull; ${c.destination}</span>
           </div>
-          <button class="btn btn-danger btn-sm btn-icon" title="Delete Channel" onclick="deleteNotificationChannel(${c.id})">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteWebhookChannel(${c.id})"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `).join('');
     })
     .catch(() => {
-      container.innerHTML = `<p style="font-size:0.85rem;color:var(--accent-rose);text-align:center">Failed to load channels.</p>`;
+      container.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--danger);font-size:0.85rem;">Failed to load notification webhooks.</div>';
     });
 }
 
-function handleAddNotificationChannel(e) {
+function handleCreateWebhook(e) {
   e.preventDefault();
   const btn = document.getElementById('saveWebhookBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Testing &amp; Saving...';
 
-  apiFetch('/notifications', 'POST', {
-    name:        document.getElementById('webhookName').value,
-    channelType: document.getElementById('webhookChannelType').value,
-    webhookUrl:  document.getElementById('webhookUrl').value
-  })
-  .then(() => {
-    toast('Notification webhook saved & test alert sent!', 'success');
-    document.getElementById('addWebhookForm').reset();
-    loadNotificationChannels();
-  })
-  .catch(err => toast('Failed to save webhook: ' + err.message, 'error'))
-  .finally(() => {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Save &amp; Test Webhook';
-  });
-}
+  const body = {
+    name: document.getElementById('webhookName').value.trim(),
+    channelType: document.getElementById('webhookType').value,
+    webhookUrl: document.getElementById('webhookDestination').value.trim()
+  };
 
-function deleteNotificationChannel(id) {
-  if (!confirm('Delete this notification channel?')) return;
-  apiFetch(`/notifications/${id}`, 'DELETE')
+  apiCall('/notifications', 'POST', body)
     .then(() => {
-      toast('Notification channel removed', 'success');
-      loadNotificationChannels();
+      toast('Alert channel saved and verification test alert sent!', 'success');
+      document.getElementById('addWebhookForm').reset();
+      loadWebhooks();
     })
-    .catch(err => toast('Failed to delete channel: ' + err.message, 'error'));
-}
-
-/* ─── Instant Analyzer ─── */
-function runAnalyzer() {
-  const url = (document.getElementById('analyzerUrl').value || '').trim();
-  if (!url) { toast('Enter a URL to scan', 'error'); return; }
-
-  const resultBox = document.getElementById('analyzerResult');
-  resultBox.style.display = 'block';
-  document.getElementById('analyzerUrl2').textContent   = url;
-  document.getElementById('analyzerLatency').textContent = 'Scanning…';
-  document.getElementById('analyzerSSL').textContent    = 'Checking…';
-  document.getElementById('analyzerStatusBadge').innerHTML = '';
-
-  apiFetch('/monitors/scan', 'POST', { url: url }, false)
-  .then(data => {
-    const status     = data.status || 'UP';
-    const latVal     = data.latencyMs != null ? data.latencyMs : data.lastLatencyMs;
-    const latency    = latVal != null ? `${latVal} ms` : '—';
-    const sslDays    = data.sslDaysRemaining != null && data.sslDaysRemaining > 0 ? `${data.sslDaysRemaining} Days` : 'N/A';
-    const isUp       = status === 'UP';
-    const badgeCls   = isUp ? 'badge-up' : 'badge-down';
-    const pulseCls   = isUp ? 'pulse-green' : 'pulse-red';
-
-    document.getElementById('analyzerStatusBadge').innerHTML = `
-      <span class="badge ${badgeCls}">
-        <span class="pulse-dot ${pulseCls}"></span> ${status}
-      </span>`;
-    document.getElementById('analyzerLatency').textContent = latency;
-    document.getElementById('analyzerSSL').textContent     = sslDays;
-    toast('Scan complete!', 'success');
-  })
-  .catch(err => {
-    document.getElementById('analyzerLatency').textContent = 'Error';
-    document.getElementById('analyzerSSL').textContent    = 'Error';
-    toast('Scan failed: ' + err.message, 'error');
-  });
-}
-
-/* ─── Auth Modal ─── */
-function openAuthModal(tab = 'login') {
-  document.getElementById('authModal').style.display = 'flex';
-  switchAuthTab(tab);
-}
-function closeAuthModal() {
-  document.getElementById('authModal').style.display = 'none';
-}
-function switchAuthTab(tab) {
-  const loginForm = document.getElementById('authLoginForm');
-  const regForm   = document.getElementById('authRegisterForm');
-  const lBtn      = document.getElementById('tabLoginBtn');
-  const rBtn      = document.getElementById('tabRegisterBtn');
-  if (tab === 'login') {
-    loginForm.style.display = 'block';
-    regForm.style.display   = 'none';
-    lBtn.classList.add('active');
-    rBtn.classList.remove('active');
-  } else {
-    loginForm.style.display = 'none';
-    regForm.style.display   = 'block';
-    rBtn.classList.add('active');
-    lBtn.classList.remove('active');
-  }
-}
-function fillCreds(email, pwd) {
-  document.getElementById('loginEmail').value = email;
-  document.getElementById('loginPwd').value   = pwd;
-}
-
-function handleLoginSubmit(e) {
-  e.preventDefault();
-  const btn = document.getElementById('loginSubmitBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Signing in…';
-
-  apiFetch('/auth/login', 'POST', {
-    email:    document.getElementById('loginEmail').value,
-    password: document.getElementById('loginPwd').value
-  }, false)
-  .then(data => {
-    storeToken(data);
-    closeAuthModal();
-    toast(`Welcome back, ${data.fullName || data.email}!`, 'success');
-    loadAll();
-  })
-  .catch(err => toast('Login failed: ' + err.message, 'error'))
-  .finally(() => { btn.disabled = false; btn.innerHTML = 'Sign In'; });
-}
-
-function handleRegisterSubmit(e) {
-  e.preventDefault();
-  const btn = document.getElementById('regSubmitBtn');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
-
-  apiFetch('/auth/register', 'POST', {
-    fullName: document.getElementById('regName').value,
-    email:    document.getElementById('regEmail').value,
-    password: document.getElementById('regPwd').value
-  }, false)
-  .then(data => {
-    storeToken(data);
-    closeAuthModal();
-    toast(`Account created! Welcome, ${data.fullName || data.email}!`, 'success');
-    loadAll();
-  })
-  .catch(err => toast('Registration failed: ' + err.message, 'error'))
-  .finally(() => { btn.disabled = false; btn.innerHTML = 'Create Account'; });
-}
-
-/* ─── Add Monitor Modal ─── */
-function openAddMonitorModal() {
-  if (!authToken) {
-    autoLogin().then(() => {
-      document.getElementById('addMonitorModal').style.display = 'flex';
+    .catch(err => toast('Error saving webhook: ' + err.message, 'error'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Save &amp; Send Test Alert';
     });
-    return;
-  }
-  document.getElementById('addMonitorModal').style.display = 'flex';
-}
-function closeAddMonitorModal() {
-  document.getElementById('addMonitorModal').style.display = 'none';
 }
 
-/* ─── Toast Notifications ─── */
+function deleteWebhookChannel(id) {
+  if (!confirm('Remove this notification webhook?')) return;
+  apiCall(`/notifications/${id}`, 'DELETE')
+    .then(() => {
+      toast('Notification webhook removed.', 'success');
+      loadWebhooks();
+    })
+    .catch(err => toast('Failed to remove: ' + err.message, 'error'));
+}
+
+/* ─── Toast System ─── */
 function toast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   if (!container) return;
 
-  const colors = {
-    success: { icon: 'fa-circle-check',  color: 'var(--accent-emerald)' },
-    error:   { icon: 'fa-circle-xmark',  color: 'var(--accent-rose)' },
-    info:    { icon: 'fa-circle-info',   color: 'var(--accent-blue)' },
+  const icons = {
+    success: { icon: 'fa-circle-check', color: 'var(--success)' },
+    error:   { icon: 'fa-circle-xmark', color: 'var(--danger)' },
+    info:    { icon: 'fa-circle-info',  color: 'var(--primary)' }
   };
-  const { icon, color } = colors[type] || colors.info;
+  const { icon, color } = icons[type] || icons.info;
 
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = `<i class="fa-solid ${icon}" style="color:${color};flex-shrink:0"></i><span>${message}</span>`;
-  container.appendChild(t);
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<i class="fa-solid ${icon}" style="color:${color};flex-shrink:0;"></i><span>${message}</span>`;
+  container.appendChild(el);
 
   setTimeout(() => {
-    t.style.opacity   = '0';
-    t.style.transform = 'translateX(110%)';
-    setTimeout(() => t.remove(), 300);
-  }, 3000);
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(110%)';
+    setTimeout(() => el.remove(), 250);
+  }, 3200);
 }
-
-/* ─── Utility ─── */
-function setText(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
-
-// Close modals on backdrop click
-document.addEventListener('click', e => {
-  if (e.target.classList.contains('modal-overlay')) {
-    e.target.style.display = 'none';
-  }
-});
