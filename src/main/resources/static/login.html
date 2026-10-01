@@ -3,34 +3,205 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In / Register — UptimePulse</title>
-  <meta name="description" content="Access your UptimePulse web health, latency and SSL certificate monitoring dashboard.">
+  <title>Sign In &bull; UptimePulse</title>
+  <meta name="description" content="Sign in or register for UptimePulse to monitor website uptime, latency and SSL certificate expiration.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="/css/style.css">
   <style>
+    /* 50/50 Split Screen Auth Layout */
     body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: var(--bg-page);
+      display: flex;
+    }
+    body::before {
+      display: none;
+    }
+
+    .split-layout {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    /* Left 50% Showcase Panel */
+    .showcase-panel {
+      flex: 1;
+      background: linear-gradient(145deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+      color: #ffffff;
+      padding: 3.5rem 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .showcase-panel::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -20%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .showcase-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: var(--font-heading);
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #ffffff;
+      text-decoration: none;
+    }
+
+    .showcase-brand-icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      background: #4f46e5;
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      padding: 1.5rem;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
     }
-    .auth-container {
+
+    .showcase-hero {
+      max-width: 480px;
+      margin: 2.5rem 0;
+    }
+
+    .showcase-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #a5b4fc;
+      margin-bottom: 1.25rem;
+    }
+
+    .showcase-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .showcase-desc {
+      font-size: 1rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    /* Live Preview Mockup Card */
+    .mock-preview-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-xl);
+      padding: 1.25rem 1.5rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .mock-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .mock-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 0.65rem;
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .mock-stat-lbl {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .mock-stat-val {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 0.15rem;
+    }
+
+    .showcase-footer {
+      font-size: 0.825rem;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Right 50% Auth Form Panel */
+    .form-panel {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      background: #ffffff;
+    }
+
+    .auth-box {
       width: 100%;
-      max-width: 440px;
+      max-width: 420px;
     }
+
+    .auth-header {
+      margin-bottom: 1.75rem;
+    }
+
+    .auth-header h2 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text-title);
+      margin-bottom: 0.35rem;
+      letter-spacing: -0.02em;
+    }
+
+    .auth-header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
     .auth-tabs {
       display: flex;
-      background: var(--bg-surface-alt);
+      background: var(--bg-card-muted);
       border-radius: var(--radius-lg);
       padding: 0.3rem;
       margin-bottom: 1.5rem;
-      border: 1px solid var(--border-default);
+      border: 1px solid var(--border);
     }
+
     .auth-tab {
       flex: 1;
-      padding: 0.6rem;
+      padding: 0.55rem;
       font-size: 0.85rem;
       font-weight: 600;
       border: none;
@@ -39,15 +210,19 @@
       border-radius: var(--radius-md);
       cursor: pointer;
       transition: var(--transition);
+      text-align: center;
     }
+
     .auth-tab.active {
-      background: var(--bg-surface);
+      background: #ffffff;
       color: var(--primary);
       box-shadow: var(--shadow-sm);
     }
+
     .password-wrap {
       position: relative;
     }
+
     .password-toggle {
       position: absolute;
       right: 0.75rem;
@@ -60,8 +235,9 @@
       padding: 0.25rem;
     }
     .password-toggle:hover {
-      color: var(--text-main);
+      color: var(--text-title);
     }
+
     .error-banner {
       display: none;
       padding: 0.75rem 1rem;
@@ -74,146 +250,250 @@
       align-items: center;
       gap: 0.5rem;
     }
-    .quick-login-grid {
+
+    .demo-creds-box {
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border-light);
+      text-align: center;
+    }
+
+    .demo-creds-title {
+      font-size: 0.725rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .demo-btn-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.6rem;
-      margin-top: 1rem;
+      gap: 0.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .split-layout {
+        flex-direction: column;
+      }
+      .showcase-panel {
+        padding: 2.5rem 1.5rem;
+      }
+      .form-panel {
+        padding: 2.5rem 1.5rem;
+      }
     }
   </style>
 </head>
 <body>
 
-  <div class="auth-container">
-    <div class="card" style="padding: 2.25rem; border-radius: var(--radius-xl); box-shadow: var(--shadow-modal);">
-      
-      <!-- Brand Logo -->
-      <div style="text-align: center; margin-bottom: 1.5rem;">
-        <a href="/" style="display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none;">
-          <div class="brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
-          <span style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; color: var(--text-main);">UptimePulse</span>
+  <div class="split-layout">
+
+    <!-- 50% Left Brand Showcase Panel -->
+    <div class="showcase-panel">
+      <div>
+        <a href="/" class="showcase-brand">
+          <div class="showcase-brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+          <span>UptimePulse</span>
         </a>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem;">
-          Website Health, Latency &amp; SSL Monitoring
-        </p>
-      </div>
 
-      <!-- Navigation Tabs -->
-      <div class="auth-tabs">
-        <button id="tabLoginBtn" class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
-        <button id="tabRegisterBtn" class="auth-tab" onclick="switchAuthTab('register')">Create Account</button>
-      </div>
+        <div class="showcase-hero">
+          <div class="showcase-pill">
+            <span class="pulse-dot pulse-green"></span>
+            <span>Continuous Synthetic Health Probes</span>
+          </div>
 
-      <!-- Error Notification Banner -->
-      <div id="errorBanner" class="error-banner">
-        <i class="fa-solid fa-circle-exclamation"></i>
-        <span id="errorText">Invalid email or password.</span>
-      </div>
+          <h1 class="showcase-title">
+            Proactive Website Health &amp; SSL Expiry Alerts.
+          </h1>
 
-      <!-- Sign In Form -->
-      <form id="loginForm" onsubmit="handleAuthLogin(event)">
-        <!-- Honeypot for bot spam protection -->
-        <input type="text" name="website_hp" style="display:none" tabindex="-1" autocomplete="off">
+          <p class="showcase-desc">
+            Monitor API endpoints, web apps, and raw TCP server ports in real-time. Detect latency degradation and expiring SSL certificates before downtime impacts your business.
+          </p>
 
-        <div class="form-group">
-          <label class="form-label" for="loginEmail">Email Address</label>
-          <input type="email" id="loginEmail" class="form-input" placeholder="developer@company.com" required autocomplete="email">
-        </div>
+          <!-- Interactive Live Mockup Card -->
+          <div class="mock-preview-card">
+            <div class="mock-head">
+              <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <span style="font-size: 0.7rem; background: rgba(99, 102, 241, 0.3); color: #c7d2fe; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700;">PROD</span>
+                <strong style="font-size: 0.95rem; color: #ffffff;">api.production.app</strong>
+              </div>
+              <span class="badge badge-up" style="font-size: 0.7rem;">
+                <span class="pulse-dot pulse-green"></span> 200 OK
+              </span>
+            </div>
 
-        <div class="form-group">
-          <label class="form-label" for="loginPassword">Password</label>
-          <div class="password-wrap">
-            <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password">
-            <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)">
-              <i class="fa-regular fa-eye"></i>
-            </button>
+            <div class="mock-stats">
+              <div>
+                <div class="mock-stat-lbl">Uptime</div>
+                <div class="mock-stat-val" style="color: #34d399;">99.99%</div>
+              </div>
+              <div>
+                <div class="mock-stat-lbl">Latency</div>
+                <div class="mock-stat-val">34 ms</div>
+              </div>
+              <div>
+                <div class="mock-stat-lbl">SSL Valid</div>
+                <div class="mock-stat-val" style="color: #38bdf8;">142 Days</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #94a3b8;">
+              <span><i class="fa-solid fa-bell" style="color: #fbbf24;"></i> Alerts routed to Slack &bull; Discord</span>
+              <span>Updated live</span>
+            </div>
           </div>
         </div>
-
-        <button type="submit" id="loginSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
-          Sign In
-        </button>
-
-        <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle); text-align: center;">
-          <span style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">
-            One-Click Demo Access
-          </span>
-          <div class="quick-login-grid">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="fillQuickCreds('user@uptimepulse.com', 'password123')">
-              <i class="fa-solid fa-user"></i> Demo User
-            </button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="fillQuickCreds('admin@uptimepulse.com', 'admin123')">
-              <i class="fa-solid fa-user-shield"></i> Admin User
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <!-- Register Form -->
-      <form id="registerForm" style="display: none;" onsubmit="handleAuthRegister(event)">
-        <!-- Honeypot for bot spam protection -->
-        <input type="text" name="website_hp" style="display:none" tabindex="-1" autocomplete="off">
-
-        <div class="form-group">
-          <label class="form-label" for="regName">Full Name</label>
-          <input type="text" id="regName" class="form-input" placeholder="Alex Morgan" required autocomplete="name">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="regEmail">Email Address</label>
-          <input type="email" id="regEmail" class="form-input" placeholder="alex@company.com" required autocomplete="email">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="regPassword">Password</label>
-          <div class="password-wrap">
-            <input type="password" id="regPassword" class="form-input" placeholder="Minimum 6 characters" minlength="6" required autocomplete="new-password">
-            <button type="button" class="password-toggle" onclick="togglePassword('regPassword', this)">
-              <i class="fa-regular fa-eye"></i>
-            </button>
-          </div>
-        </div>
-
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-          By registering, you agree to our <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.
-        </div>
-
-        <button type="submit" id="regSubmitBtn" class="btn btn-primary" style="width: 100%;">
-          Create Free Account
-        </button>
-      </form>
-
-      <!-- Footer navigation -->
-      <div style="margin-top: 1.5rem; text-align: center; font-size: 0.82rem;">
-        <a href="/" style="color: var(--text-muted); text-decoration: none;">
-          <i class="fa-solid fa-arrow-left"></i> Return to Homepage
-        </a>
       </div>
 
+      <div class="showcase-footer">
+        <span>&copy; 2026 UptimePulse Monitoring Systems</span>
+        <a href="/" style="color: #a5b4fc; text-decoration: underline;">&larr; Back to Homepage</a>
+      </div>
     </div>
+
+    <!-- 50% Right Auth Form Panel -->
+    <div class="form-panel">
+      <div class="auth-box">
+
+        <div class="auth-header">
+          <h2 id="authHeading">Welcome Back</h2>
+          <p id="authSubheading">Sign in to access your monitored targets and SSL alerts.</p>
+        </div>
+
+        <!-- Auth Tabs Toggle -->
+        <div class="auth-tabs">
+          <button id="tabLoginBtn" class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+          <button id="tabRegisterBtn" class="auth-tab" onclick="switchAuthTab('register')">Create Account</button>
+        </div>
+
+        <!-- Error Notification Banner -->
+        <div id="errorBanner" class="error-banner">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="errorText">Invalid email or password.</span>
+        </div>
+
+        <!-- Sign In Form -->
+        <form id="loginForm" onsubmit="handleAuthLogin(event)">
+          <!-- Anti-bot honeypot -->
+          <input type="text" name="website_hp" style="display:none;" tabindex="-1" autocomplete="off">
+
+          <div class="form-row">
+            <label class="form-label" for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" class="form-control" placeholder="name@company.com" required autocomplete="email">
+          </div>
+
+          <div class="form-row">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label class="form-label" for="loginPassword" style="margin: 0;">Password</label>
+            </div>
+            <div class="password-wrap">
+              <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('loginPassword', this)">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="loginSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem; padding: 0.65rem;">
+            Sign In to Dashboard
+          </button>
+
+          <!-- Quick 1-Click Demo Logins -->
+          <div class="demo-creds-box">
+            <span class="demo-creds-title">One-Click Quick Login</span>
+            <div class="demo-btn-grid">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="fillDemoCreds('user@uptimepulse.com', 'password123')">
+                <i class="fa-solid fa-user"></i> Demo User
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="fillDemoCreds('admin@uptimepulse.com', 'admin123')">
+                <i class="fa-solid fa-user-shield"></i> Admin User
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" style="display: none;" onsubmit="handleAuthRegister(event)">
+          <!-- Anti-bot honeypot -->
+          <input type="text" name="website_hp" style="display:none;" tabindex="-1" autocomplete="off">
+
+          <div class="form-row">
+            <label class="form-label" for="regName">Full Name</label>
+            <input type="text" id="regName" class="form-control" placeholder="Alex Morgan" required autocomplete="name">
+          </div>
+
+          <div class="form-row">
+            <label class="form-label" for="regEmail">Work Email Address</label>
+            <input type="email" id="regEmail" class="form-control" placeholder="alex@company.com" required autocomplete="email">
+          </div>
+
+          <div class="form-row">
+            <label class="form-label" for="regPassword">Create Password</label>
+            <div class="password-wrap">
+              <input type="password" id="regPassword" class="form-control" placeholder="Minimum 6 characters" minlength="6" required autocomplete="new-password">
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('regPassword', this)">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="font-size: 0.775rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.5;">
+            By signing up, you agree to our <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.
+          </div>
+
+          <button type="submit" id="regSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 0.65rem;">
+            Create Free Account
+          </button>
+        </form>
+
+        <!-- Footer link back -->
+        <div style="margin-top: 1.75rem; text-align: center; font-size: 0.85rem;">
+          <a href="/" style="color: var(--text-muted);">
+            <i class="fa-solid fa-arrow-left"></i> Return to Homepage
+          </a>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
   <div id="toastContainer"></div>
 
   <script src="/js/app.js"></script>
   <script>
+    // Handle URL parameters ?tab=register
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('tab') === 'register') {
+        switchAuthTab('register');
+      }
+    });
+
     function switchAuthTab(tab) {
       const isLogin = tab === 'login';
       document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
       document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
       document.getElementById('tabLoginBtn').classList.toggle('active', isLogin);
       document.getElementById('tabRegisterBtn').classList.toggle('active', !isLogin);
+      document.getElementById('authHeading').textContent = isLogin ? 'Welcome Back' : 'Create an Account';
+      document.getElementById('authSubheading').textContent = isLogin 
+        ? 'Sign in to access your monitored targets and SSL alerts.' 
+        : 'Start monitoring your websites and APIs in under 60 seconds.';
       hideError();
     }
 
-    function togglePassword(inputId, btn) {
+    function togglePasswordVisibility(inputId, btn) {
       const input = document.getElementById(inputId);
-      const isPassword = input.type === 'password';
-      input.type = isPassword ? 'text' : 'password';
-      btn.innerHTML = isPassword ? '<i class="fa-regular fa-eye-slash"></i>' : '<i class="fa-regular fa-eye"></i>';
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      btn.innerHTML = isPass ? '<i class="fa-regular fa-eye-slash"></i>' : '<i class="fa-regular fa-eye"></i>';
     }
 
-    function fillQuickCreds(email, password) {
+    function fillDemoCreds(email, password) {
       document.getElementById('loginEmail').value = email;
       document.getElementById('loginPassword').value = password;
       hideError();
@@ -240,18 +520,18 @@
       const email = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value;
 
-      apiFetch('/auth/login', 'POST', { email, password }, false)
+      apiCall('/auth/login', 'POST', { email, password }, false)
         .then(data => {
-          storeToken(data);
+          saveAuthToken(data);
           toast(`Welcome back, ${data.fullName || data.email}!`, 'success');
-          setTimeout(() => { window.location.href = '/'; }, 500);
+          setTimeout(() => { window.location.href = '/'; }, 400);
         })
         .catch(err => {
-          showError(err.message || 'Login failed. Please check credentials.');
+          showError(err.message || 'Invalid email or password.');
         })
         .finally(() => {
           btn.disabled = false;
-          btn.innerHTML = 'Sign In';
+          btn.innerHTML = 'Sign In to Dashboard';
         });
     }
 
@@ -266,14 +546,14 @@
       const email = document.getElementById('regEmail').value.trim();
       const password = document.getElementById('regPassword').value;
 
-      apiFetch('/auth/register', 'POST', { fullName, email, password }, false)
+      apiCall('/auth/register', 'POST', { fullName, email, password }, false)
         .then(data => {
-          storeToken(data);
+          saveAuthToken(data);
           toast(`Account created! Welcome, ${fullName}!`, 'success');
-          setTimeout(() => { window.location.href = '/'; }, 500);
+          setTimeout(() => { window.location.href = '/'; }, 400);
         })
         .catch(err => {
-          showError(err.message || 'Registration failed. Email may already be in use.');
+          showError(err.message || 'Registration failed. Email may already be registered.');
         })
         .finally(() => {
           btn.disabled = false;

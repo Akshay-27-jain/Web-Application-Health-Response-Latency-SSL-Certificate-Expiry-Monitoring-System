@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UptimePulse — Real-Time Website Health, Latency &amp; SSL Expiry Monitoring</title>
+  <title>UptimePulse &bull; Real-Time Website Health, Latency &amp; SSL Expiry Monitoring</title>
   <meta name="description" content="High-concurrency synthetic website uptime monitoring, raw TCP port probes, real-time response latency percentiles, and automated SSL certificate expiry alerts.">
-  <meta name="keywords" content="uptime monitoring, website health, SSL certificate expiry, latency tracking, synthetic monitoring, DevOps, Slack alerts, PostgreSQL">
+  <meta name="keywords" content="uptime monitoring, website health, SSL certificate expiry, latency tracking, synthetic monitoring, DevOps, Slack alerts">
   <meta name="author" content="UptimePulse Inc.">
 
   <!-- OpenGraph Social Metadata -->
-  <meta property="og:title" content="UptimePulse — Enterprise Health &amp; SSL Monitoring">
-  <meta property="og:description" content="Never miss a second of downtime. High-performance non-blocking synthetic monitoring with instant alerts.">
+  <meta property="og:title" content="UptimePulse &bull; Enterprise Health &amp; SSL Monitoring">
+  <meta property="og:description" content="Never miss a second of downtime. High-performance synthetic monitoring with instant alerts.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://uptimepulse.com/">
   <meta property="og:image" content="/favicon.svg">
@@ -23,43 +23,41 @@
 
   <!-- Top Announcement Bar -->
   <div class="top-bar">
-    <span><i class="fa-solid fa-bolt" style="color: #fbbf24;"></i> <strong>PostgreSQL 18 Powered:</strong> High-concurrency Java 21 non-blocking synthetic health checks</span>
+    <span><i class="fa-solid fa-sparkles" style="color: #fbbf24;"></i> <strong>Proactive Synthetic Monitoring:</strong> Instant incident routing to Slack, Discord &amp; Email</span>
     <a href="/status.html">Live Status Page &rarr;</a>
   </div>
 
-  <!-- Sticky Navbar -->
+  <!-- Sticky Navbar (Clean branding, NO SAAS tag) -->
   <nav class="navbar">
     <div class="container nav-inner">
       <a href="/" class="brand">
         <div class="brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
         <span>UptimePulse</span>
-        <span class="brand-badge">SaaS</span>
       </a>
 
-      <ul class="nav-links">
-        <li><a href="#dashboard" class="nav-link"><i class="fa-solid fa-chart-pie"></i> Dashboard</a></li>
+      <!-- Public Navigation Links (When Logged Out) -->
+      <ul class="nav-links" id="publicNavLinks">
         <li><a href="#features" class="nav-link"><i class="fa-solid fa-bolt"></i> Features</a></li>
-        <li><a href="#architecture" class="nav-link"><i class="fa-solid fa-network-wired"></i> Architecture</a></li>
-        <li><a href="#scanner" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> Live Scanner</a></li>
+        <li><a href="#howItWorks" class="nav-link"><i class="fa-solid fa-diagram-project"></i> How It Works</a></li>
         <li><a href="/status.html" class="nav-link"><i class="fa-solid fa-signal"></i> Public Status</a></li>
         <li><a href="/swagger-ui/index.html" target="_blank" class="nav-link"><i class="fa-solid fa-code"></i> API Docs</a></li>
       </ul>
 
-      <!-- Auth State Group -->
+      <!-- Auth State Navigation Actions -->
       <div class="nav-auth-group">
-        <!-- Logged Out State -->
-        <div id="loggedOutNav" style="display: flex; align-items: center; gap: 0.5rem;">
+        <!-- Logged Out View -->
+        <div id="loggedOutNav" style="display: flex; align-items: center; gap: 0.6rem;">
           <a href="/login.html" class="btn btn-secondary btn-sm">Sign In</a>
-          <a href="/login.html" class="btn btn-primary btn-sm">Start Free &rarr;</a>
+          <a href="/login.html?tab=register" class="btn btn-primary btn-sm">Get Started Free &rarr;</a>
         </div>
 
-        <!-- Logged In State -->
+        <!-- Logged In View -->
         <div id="loggedInNav" style="display: none; align-items: center; gap: 0.6rem;">
           <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
             <i class="fa-solid fa-plus"></i> Add Monitor
           </button>
 
-          <!-- User Profile Dropdown -->
+          <!-- User Menu Dropdown -->
           <div class="user-menu">
             <div class="user-pill" onclick="toggleUserDropdown()">
               <div class="user-avatar" id="userInitial">U</div>
@@ -67,7 +65,7 @@
               <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem; color: var(--text-subtle);"></i>
             </div>
             <div class="user-dropdown" id="userDropdown">
-              <a href="#dashboard" class="user-dropdown-item"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+              <a href="#dashboardView" class="user-dropdown-item"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
               <a href="/status.html" class="user-dropdown-item"><i class="fa-solid fa-signal"></i> Public Status</a>
               <button class="user-dropdown-item" onclick="openNotificationsModal()"><i class="fa-solid fa-bell"></i> Alert Webhooks</button>
               <div style="border-top: 1px solid var(--border-light); margin: 0.25rem 0;"></div>
@@ -79,39 +77,278 @@
     </div>
   </nav>
 
-  <!-- Hero Section -->
-  <header class="hero">
-    <div class="container">
-      <div class="hero-pill">
-        <span class="pulse-dot pulse-green"></span>
-        <span>Global Synthetic Probing Network &bull; PostgreSQL 18 &bull; Java 21</span>
+  <!-- ========================================================
+       VIEW 1: CLEAN PUBLIC MARKETING LANDING (When Logged Out)
+       ======================================================== -->
+  <div id="landingView">
+
+    <!-- Hero Section -->
+    <header class="hero">
+      <div class="container">
+        <div class="hero-pill">
+          <span class="pulse-dot pulse-green"></span>
+          <span>Global Synthetic Probing Network &bull; 99.99% Accuracy</span>
+        </div>
+
+        <h1 class="hero-title">
+          Never Miss a Second of Downtime.<br>
+          <span class="hero-gradient">Proactive Website Health &amp; SSL Monitoring</span>
+        </h1>
+
+        <p class="hero-subtitle">
+          Monitor API endpoints, web applications, and backend server ports in real time. Receive sub-second incident alerts via Slack, Discord, and Email before users are affected.
+        </p>
+
+        <div class="hero-actions">
+          <a href="/login.html?tab=register" class="btn btn-primary btn-lg">
+            <i class="fa-solid fa-rocket"></i> Start Free Monitoring
+          </a>
+          <a href="/login.html" class="btn btn-secondary btn-lg">
+            <i class="fa-solid fa-right-to-bracket"></i> Sign In to Dashboard
+          </a>
+        </div>
+
+        <!-- Scanner Teaser (Prompt to Sign In) -->
+        <div class="scanner-card" style="max-width: 680px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.4rem;">
+              <i class="fa-solid fa-shield-halved"></i> Live URL &amp; SSL Inspection Tool
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-lock"></i> Account required</span>
+          </div>
+
+          <div class="scanner-input-bar">
+            <input type="url" id="publicScanInput" class="scanner-input" placeholder="Enter target URL (e.g. https://yourcompany.com)" value="https://github.com">
+            <a href="/login.html" class="btn btn-primary">
+              <i class="fa-solid fa-right-to-bracket"></i> Sign In to Scan
+            </a>
+          </div>
+
+          <div style="margin-top: 0.85rem; font-size: 0.775rem; color: var(--text-muted); text-align: left; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <span><i class="fa-solid fa-circle-check" style="color: var(--success);"></i> Free instant SSL certificate tracking</span>
+            <span><i class="fa-solid fa-circle-check" style="color: var(--success);"></i> Multi-protocol HTTP/TCP socket checks</span>
+          </div>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- How It Works Section (3 Clean Steps) -->
+    <section class="arch-section" id="howItWorks" style="padding: 4.5rem 0; background: #ffffff;">
+      <div class="container">
+        <div style="text-align: center; max-width: 620px; margin: 0 auto 3rem;">
+          <div class="hero-pill" style="margin-bottom: 0.75rem;"><i class="fa-solid fa-wand-magic-sparkles"></i> Simple Setup</div>
+          <h2 style="font-size: 2rem; margin-bottom: 0.5rem;">How UptimePulse Works</h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Deploy full-stack synthetic monitoring for your web architecture in three steps.</p>
+        </div>
+
+        <div class="arch-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="arch-card">
+            <div class="arch-card-icon" style="background: var(--primary-light); color: var(--primary);">
+              <i class="fa-solid fa-plus"></i>
+            </div>
+            <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">1. Add Your Targets</h3>
+            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;">
+              Configure your website URLs, REST API endpoints, or raw TCP database ports (Postgres, Redis, DNS) in seconds.
+            </p>
+          </div>
+
+          <div class="arch-card">
+            <div class="arch-card-icon" style="background: #e0f2fe; color: #0369a1;">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+            <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">2. Continuous Probing</h3>
+            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;">
+              Non-blocking synthetic probe workers execute availability and SSL certificate validity checks around the clock.
+            </p>
+          </div>
+
+          <div class="arch-card">
+            <div class="arch-card-icon" style="background: var(--success-light); color: var(--success);">
+              <i class="fa-solid fa-bell"></i>
+            </div>
+            <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">3. Instant Alerts</h3>
+            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;">
+              Get immediate alerts routed directly to Slack, Discord, and Email when downtime or SSL expiration is detected.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Bento Grid -->
+    <section class="features-section" id="features">
+      <div class="container">
+        <div style="text-align: center; max-width: 620px; margin: 0 auto 3rem;">
+          <div class="hero-pill" style="margin-bottom: 0.75rem;"><i class="fa-solid fa-shield-halved"></i> Comprehensive Protection</div>
+          <h2 style="font-size: 2rem; margin-bottom: 0.5rem;">Everything for 99.99% Reliability</h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Full visibility into your web apps, microservices, and SSL certificates.</p>
+        </div>
+
+        <div class="bento-grid">
+          <div class="bento-card">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
+              <i class="fa-solid fa-globe"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Multi-Protocol Probing</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+              Check HTTP/HTTPS websites as well as raw TCP socket ports (PostgreSQL 5432, Redis 6379, DNS 53) using non-blocking I/O.
+            </p>
+          </div>
+
+          <div class="bento-card">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: var(--success-light); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">SSL Expiration Radar</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+              Avoid surprise certificate outages. Automated warnings at 30, 14, and 7 days prior to SSL expiration.
+            </p>
+          </div>
+
+          <div class="bento-card">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
+              <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Live Response Latency</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+              Time-series response metrics with live SVG sparklines, 24-hour min/avg/max latency percentiles, and check history.
+            </p>
+          </div>
+
+          <div class="bento-card">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: #fdf4ff; color: #a21caf; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
+              <i class="fa-solid fa-share-nodes"></i>
+            </div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Public Status Pages</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+              Provide transparent 90-day availability history strips to build customer confidence and reduce support tickets.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Accordion Section -->
+    <section class="faq-section">
+      <div class="container">
+        <div style="text-align: center; max-width: 600px; margin: 0 auto;">
+          <h2 style="font-size: 1.85rem; margin-bottom: 0.4rem;">Frequently Asked Questions</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Common questions about our probes, SSL tracking, and alert integrations.</p>
+        </div>
+
+        <div class="faq-wrap">
+          <div class="faq-box open">
+            <div class="faq-q" onclick="toggleFaqBox(this)">
+              <span>How does the SSL certificate expiration check work?</span>
+              <i class="fa-solid fa-chevron-down faq-chevron"></i>
+            </div>
+            <div class="faq-a">
+              During each health check, our probe initiates a lightweight TLS handshake, extracts the X.509 certificate expiry date, and calculates remaining validity days. If expiry is within 30 days, alerts trigger automatically.
+            </div>
+          </div>
+
+          <div class="faq-box">
+            <div class="faq-q" onclick="toggleFaqBox(this)">
+              <span>Can I monitor raw TCP backend ports?</span>
+              <i class="fa-solid fa-chevron-down faq-chevron"></i>
+            </div>
+            <div class="faq-a">
+              Yes! You can monitor any TCP socket port (such as PostgreSQL 5432, Redis 6379, MySQL 3306, or DNS 53) simply by selecting "TCP Port Probe" when adding a new target.
+            </div>
+          </div>
+
+          <div class="faq-box">
+            <div class="faq-q" onclick="toggleFaqBox(this)">
+              <span>Which notification channels are supported?</span>
+              <i class="fa-solid fa-chevron-down faq-chevron"></i>
+            </div>
+            <div class="faq-a">
+              UptimePulse supports Slack incoming webhooks (Block Kit), Discord channel webhooks, transactional HTML emails, and custom HTTP POST JSON webhooks.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ========================================================
+       VIEW 2: FULL MONITORING DASHBOARD (When Logged In)
+       ======================================================== -->
+  <div id="dashboardView" style="display: none;">
+    <main class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+
+      <!-- Dashboard Header -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-title); margin-bottom: 0.2rem;">
+            Monitoring Command Center
+          </h1>
+          <p style="font-size: 0.875rem; color: var(--text-muted);">
+            Real-time synthetic probing &bull; Continuous background health checks
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-secondary btn-sm" onclick="openNotificationsModal()" title="Alert Webhooks">
+            <i class="fa-solid fa-bell"></i> Alert Webhooks
+          </button>
+          <button class="btn btn-secondary btn-sm" id="refreshBtn" onclick="refreshMonitors()">
+            <i class="fa-solid fa-rotate"></i> Refresh
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
+            <i class="fa-solid fa-plus"></i> Add Target
+          </button>
+        </div>
       </div>
 
-      <h1 class="hero-title">
-        Enterprise Website Health &amp;<br>
-        <span class="hero-gradient">SSL Expiry Monitoring Platform</span>
-      </h1>
+      <!-- KPI Metric Overview Cards -->
+      <div class="metrics-row">
+        <div class="card metric-card">
+          <div class="metric-header">
+            <span class="metric-title">System Uptime</span>
+            <div class="metric-icon green"><i class="fa-solid fa-circle-check"></i></div>
+          </div>
+          <div class="metric-value text-emerald" id="kpiUptime">99.98%</div>
+          <div class="metric-meta" id="kpiUptimeMeta">Calculated across active targets</div>
+        </div>
 
-      <p class="hero-subtitle">
-        Detect outages before your users notice. High-concurrency synthetic probes for HTTP/HTTPS endpoints and TCP socket ports with instant alerts via Slack, Discord, and Email.
-      </p>
+        <div class="card metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Active Targets</span>
+            <div class="metric-icon blue"><i class="fa-solid fa-satellite-dish"></i></div>
+          </div>
+          <div class="metric-value" id="kpiMonitors">0</div>
+          <div class="metric-meta" id="kpiMonitorsMeta">HTTP &amp; TCP Socket Pings Active</div>
+        </div>
 
-      <div class="hero-actions">
-        <a href="#dashboard" class="btn btn-primary btn-lg">
-          <i class="fa-solid fa-chart-line"></i> View Live Dashboard
-        </a>
-        <a href="#scanner" class="btn btn-secondary btn-lg">
-          <i class="fa-solid fa-bolt"></i> Test Instant URL Scan
-        </a>
+        <div class="card metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Average Latency</span>
+            <div class="metric-icon amber"><i class="fa-solid fa-gauge-high"></i></div>
+          </div>
+          <div class="metric-value text-amber" id="kpiLatency">0 ms</div>
+          <div class="metric-meta">Continuous synthetic probes</div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-header">
+            <span class="metric-title">SSL Certificate Health</span>
+            <div class="metric-icon green"><i class="fa-solid fa-lock"></i></div>
+          </div>
+          <div class="metric-value text-emerald" id="kpiSSL">100% Valid</div>
+          <div class="metric-meta" id="kpiSSLMeta">All certificates &gt; 30 days valid</div>
+        </div>
       </div>
 
-      <!-- Compact Live URL & SSL Scanner Bar -->
-      <div class="scanner-card" id="scanner">
+      <!-- Authenticated Instant Scanner Tool -->
+      <div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
           <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.4rem;">
             <i class="fa-solid fa-bolt"></i> Instant URL &amp; SSL Scanner
           </div>
-          <span style="font-size: 0.725rem; color: var(--text-muted);">Real probe test &bull; No login required</span>
+          <span style="font-size: 0.725rem; color: var(--text-muted);">One-time synthetic probe without saving</span>
         </div>
 
         <div class="scanner-input-bar">
@@ -146,269 +383,65 @@
         </div>
       </div>
 
-    </div>
-  </header>
+      <!-- Dashboard Grid: Monitors + Alerts -->
+      <div class="dashboard-grid">
 
-  <!-- Live Command Center / Dashboard Section -->
-  <main class="container" id="dashboard" style="padding-top: 1rem;">
-
-    <!-- KPI Metric Overview Row -->
-    <div class="metrics-row">
-      <div class="card metric-card">
-        <div class="metric-header">
-          <span class="metric-title">System Uptime (30d)</span>
-          <div class="metric-icon green"><i class="fa-solid fa-circle-check"></i></div>
-        </div>
-        <div class="metric-value text-emerald" id="kpiUptime">99.98%</div>
-        <div class="metric-meta" id="kpiUptimeMeta">Calculated continuously across active targets</div>
-      </div>
-
-      <div class="card metric-card">
-        <div class="metric-header">
-          <span class="metric-title">Active Targets</span>
-          <div class="metric-icon blue"><i class="fa-solid fa-satellite-dish"></i></div>
-        </div>
-        <div class="metric-value" id="kpiMonitors">5</div>
-        <div class="metric-meta" id="kpiMonitorsMeta">HTTP &amp; TCP Socket Pings Active</div>
-      </div>
-
-      <div class="card metric-card">
-        <div class="metric-header">
-          <span class="metric-title">Average Latency</span>
-          <div class="metric-icon amber"><i class="fa-solid fa-gauge-high"></i></div>
-        </div>
-        <div class="metric-value text-amber" id="kpiLatency">42 ms</div>
-        <div class="metric-meta">Non-blocking Java 21 NIO virtual threads</div>
-      </div>
-
-      <div class="card metric-card">
-        <div class="metric-header">
-          <span class="metric-title">SSL Certificate Health</span>
-          <div class="metric-icon green"><i class="fa-solid fa-lock"></i></div>
-        </div>
-        <div class="metric-value text-emerald" id="kpiSSL">100% Valid</div>
-        <div class="metric-meta" id="kpiSSLMeta">All certificates &gt; 30 days remaining</div>
-      </div>
-    </div>
-
-    <!-- Dashboard Content Layout -->
-    <div class="dashboard-grid">
-
-      <!-- Left Column: Active Monitored Services -->
-      <div>
-        <div class="section-head">
-          <div class="section-title">
-            <i class="fa-solid fa-server" style="color: var(--primary);"></i>
-            <span>Active Monitored Targets</span>
-          </div>
-
-          <div style="display: flex; gap: 0.4rem;">
-            <button class="btn btn-secondary btn-sm" onclick="openNotificationsModal()" title="Alert Webhooks">
-              <i class="fa-solid fa-bell"></i> Alerts
-            </button>
-            <button class="btn btn-secondary btn-sm" id="refreshBtn" onclick="refreshMonitors()">
-              <i class="fa-solid fa-rotate"></i> Refresh
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
-              <i class="fa-solid fa-plus"></i> Add Monitor
-            </button>
-          </div>
-        </div>
-
-        <!-- Toolbar & Filter Tabs -->
-        <div class="toolbar">
-          <button class="filter-tab active" onclick="applyStatusFilter('ALL', this)">All Targets</button>
-          <button class="filter-tab" onclick="applyStatusFilter('UP', this)">Online (UP)</button>
-          <button class="filter-tab" onclick="applyStatusFilter('ISSUES', this)">Issues Detected</button>
-
-          <div class="search-field">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" placeholder="Filter by name, URL, or #tag..." oninput="handleSearchFilter(this.value)">
-          </div>
-        </div>
-
-        <!-- Monitors Flow Grid -->
-        <div class="monitors-flow" id="monitorsContainer">
-          <!-- Dynamically populated via app.js -->
-        </div>
-      </div>
-
-      <!-- Right Column: Incident & Alert Event Feed -->
-      <aside>
-        <div class="section-head">
-          <div class="section-title">
-            <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning);"></i>
-            <span>Live Alert Feed</span>
-          </div>
-        </div>
-
-        <div class="card" style="padding: 1rem;">
-          <div class="alert-feed" id="alertFeedContainer">
-            <div class="empty-feed">
-              <i class="fa-solid fa-shield-check"></i>
-              <strong style="display: block; color: var(--text-title); margin-bottom: 0.2rem;">All Systems Operational</strong>
-              Zero downtime or SSL expiration alerts detected.
+        <!-- Left Column: Monitored Services -->
+        <div>
+          <div class="section-head">
+            <div class="section-title">
+              <i class="fa-solid fa-server" style="color: var(--primary);"></i>
+              <span>Active Monitored Targets</span>
             </div>
           </div>
+
+          <!-- Toolbar & Filter Tabs -->
+          <div class="toolbar">
+            <button class="filter-tab active" onclick="applyStatusFilter('ALL', this)">All Targets</button>
+            <button class="filter-tab" onclick="applyStatusFilter('UP', this)">Online (UP)</button>
+            <button class="filter-tab" onclick="applyStatusFilter('ISSUES', this)">Issues Detected</button>
+
+            <div class="search-field">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" placeholder="Filter by name, URL, or #tag..." oninput="handleSearchFilter(this.value)">
+            </div>
+          </div>
+
+          <!-- Monitors Flow Grid -->
+          <div class="monitors-flow" id="monitorsContainer">
+            <!-- Populated via app.js -->
+          </div>
         </div>
-      </aside>
 
-    </div>
+        <!-- Right Column: Incident & Alert Feed -->
+        <aside>
+          <div class="section-head">
+            <div class="section-title">
+              <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning);"></i>
+              <span>Live Alert Feed</span>
+            </div>
+          </div>
 
-  </main>
+          <div class="card" style="padding: 1rem;">
+            <div class="alert-feed" id="alertFeedContainer">
+              <div class="empty-feed">
+                <i class="fa-solid fa-shield-check"></i>
+                <strong style="display: block; color: var(--text-title); margin-bottom: 0.2rem;">All Systems Operational</strong>
+                Zero downtime or SSL expiration alerts detected.
+              </div>
+            </div>
+          </div>
+        </aside>
 
-  <!-- Architecture & Engine Showcase Section -->
-  <section class="arch-section" id="architecture">
-    <div class="container">
-      <div style="text-align: center; max-width: 640px; margin: 0 auto;">
-        <div class="hero-pill" style="margin-bottom: 0.75rem;"><i class="fa-solid fa-microchip"></i> System Architecture</div>
-        <h2 style="font-size: 2rem; margin-bottom: 0.5rem;">Enterprise Java 21 Synthetic Engine</h2>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">Designed for ultra-low overhead, non-blocking I/O, and continuous high-availability probing.</p>
       </div>
 
-      <div class="arch-grid">
-        <div class="arch-card">
-          <div class="arch-card-icon" style="background: var(--primary-light); color: var(--primary);">
-            <i class="fa-solid fa-feather"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Java 21 Virtual Threads</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Project Loom lightweight virtual threads execute thousands of concurrent non-blocking synthetic HTTP and TCP checks with near-zero memory footprint.
-          </p>
-        </div>
-
-        <div class="arch-card">
-          <div class="arch-card-icon" style="background: #e0f2fe; color: #0369a1;">
-            <i class="fa-solid fa-database"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">PostgreSQL 18 Persistence</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Robust relational storage with Spring Data JPA. Historical ping results, incident logs, and user configurations are permanently safely stored.
-          </p>
-        </div>
-
-        <div class="arch-card">
-          <div class="arch-card-icon" style="background: #fef3c7; color: #b45309;">
-            <i class="fa-solid fa-cubes"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Pluggable Redis &amp; Kafka</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Modular architecture supporting local standalone execution and distributed production scaling via Redis caching and Apache Kafka event streams.
-          </p>
-        </div>
-
-        <div class="arch-card">
-          <div class="arch-card-icon" style="background: var(--success-light); color: var(--success);">
-            <i class="fa-solid fa-paper-plane"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Multi-Channel Dispatcher</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Sub-second incident routing to Slack Block Kit, Discord webhooks, HTML transactional emails, and custom HTTP POST endpoints.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Features Bento Grid Section -->
-  <section class="features-section" id="features">
-    <div class="container">
-      <div style="text-align: center; max-width: 640px; margin: 0 auto;">
-        <div class="hero-pill" style="margin-bottom: 0.75rem;"><i class="fa-solid fa-layer-group"></i> Key Capabilities</div>
-        <h2 style="font-size: 2rem; margin-bottom: 0.5rem;">Everything Needed for 99.99% Reliability</h2>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">Full visibility across your external web services, APIs, and infrastructure ports.</p>
-      </div>
-
-      <div class="bento-grid">
-        <div class="bento-card">
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
-            <i class="fa-solid fa-globe"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Multi-Protocol Checks</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Execute standard HTTP/HTTPS availability checks as well as raw TCP socket probes for database ports (Postgres 5432, Redis 6379, DNS 53).
-          </p>
-        </div>
-
-        <div class="bento-card">
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: var(--success-light); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">SSL Expiration Radar</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Proactive certificate expiry warnings at 30, 14, and 7 days before certificate expiration to prevent browser security warnings.
-          </p>
-        </div>
-
-        <div class="bento-card">
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
-            <i class="fa-solid fa-chart-area"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Live Latency Sparklines</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Real-time SVG polyline sparklines visualising response times with 24-hour min, average, and maximum latency analytics.
-          </p>
-        </div>
-
-        <div class="bento-card">
-          <div style="width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md); background: #fdf4ff; color: #a21caf; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 1rem;">
-            <i class="fa-solid fa-share-nodes"></i>
-          </div>
-          <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">Hosted Public Status Pages</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">
-            Shareable public status pages with 90-day availability history strips to build customer trust and communicate uptime transparently.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- FAQ Accordion Section -->
-  <section class="faq-section">
-    <div class="container">
-      <div style="text-align: center; max-width: 600px; margin: 0 auto;">
-        <h2 style="font-size: 1.85rem; margin-bottom: 0.4rem;">Frequently Asked Questions</h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Technical details about our synthetic probes, database, and notifications.</p>
-      </div>
-
-      <div class="faq-wrap">
-        <div class="faq-box open">
-          <div class="faq-q" onclick="toggleFaqBox(this)">
-            <span>How does the SSL certificate expiration check work?</span>
-            <i class="fa-solid fa-chevron-down faq-chevron"></i>
-          </div>
-          <div class="faq-a">
-            During synthetic health checks, our probe initiates a non-blocking TLS handshake, inspects the X.509 certificate expiry date, and computes remaining validity days. If expiry is within 30 days, alerts trigger automatically.
-          </div>
-        </div>
-
-        <div class="faq-box">
-          <div class="faq-q" onclick="toggleFaqBox(this)">
-            <span>What database is used for storing logs and monitors?</span>
-            <i class="fa-solid fa-chevron-down faq-chevron"></i>
-          </div>
-          <div class="faq-a">
-            The platform is powered by an enterprise-grade <strong>PostgreSQL 18</strong> database with Spring Data JPA. All monitors, users, ping logs, and notification webhooks are permanently stored with zero data loss.
-          </div>
-        </div>
-
-        <div class="faq-box">
-          <div class="faq-q" onclick="toggleFaqBox(this)">
-            <span>Can I monitor private internal backend ports?</span>
-            <i class="fa-solid fa-chevron-down faq-chevron"></i>
-          </div>
-          <div class="faq-a">
-            Yes! You can monitor any TCP socket port (such as PostgreSQL 5432, Redis 6379, MySQL 3306, or DNS 53) simply by choosing "TCP Port Probe" when creating a new target.
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    </main>
+  </div>
 
   <!-- Floating Cookie Consent Banner -->
   <div class="cookie-banner" id="cookieBanner" style="display: none;">
     <div class="cookie-text">
-      <strong>🍪 Cookie &amp; Privacy Notice:</strong> We use essential cookies to maintain your authenticated session and provide reliable monitoring telemetry. Read our <a href="/privacy.html">Privacy Policy</a>.
+      <strong>🍪 Cookie &amp; Privacy Notice:</strong> We use essential cookies to maintain your authenticated session. Read our <a href="/privacy.html">Privacy Policy</a>.
     </div>
     <div class="cookie-btns">
       <button class="btn btn-secondary btn-sm" onclick="setCookiePreference('reject')">Decline</button>
@@ -570,16 +603,14 @@
             <span>UptimePulse</span>
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 300px; line-height: 1.6; margin-bottom: 0.75rem;">
-            Enterprise synthetic uptime monitoring, non-blocking HTTP/TCP latency checks, and automated SSL expiry defense.
+            Continuous synthetic uptime monitoring, non-blocking HTTP/TCP latency checks, and automated SSL expiry defense.
           </p>
-          <span style="font-size: 0.775rem; color: var(--text-subtle);">Running on Java 21 &amp; PostgreSQL 18</span>
         </div>
 
         <div class="footer-col">
-          <h5>Product</h5>
+          <h5>Platform</h5>
           <ul class="footer-list">
-            <li><a href="#dashboard">Live Dashboard</a></li>
-            <li><a href="#scanner">Instant URL Scanner</a></li>
+            <li><a href="/login.html">Sign In to Dashboard</a></li>
             <li><a href="/status.html">Public Status Page</a></li>
             <li><a href="/swagger-ui/index.html" target="_blank">OpenAPI &amp; Swagger Docs</a></li>
           </ul>
@@ -591,17 +622,16 @@
             <li><a href="/privacy.html">Privacy Policy</a></li>
             <li><a href="/terms.html">Terms of Service</a></li>
             <li><a href="/status.html">Service SLA (99.99%)</a></li>
-            <li><a href="mailto:security@uptimepulse.com">Report Vulnerability</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
-          <h5>Probe Network</h5>
+          <h5>Monitoring</h5>
           <ul class="footer-list">
-            <li><span style="color: var(--success); font-size: 0.85rem;"><i class="fa-solid fa-circle" style="font-size: 0.45rem;"></i> Local Node (Online)</span></li>
-            <li><a href="#dashboard">HTTP / HTTPS Probes</a></li>
-            <li><a href="#dashboard">TCP Socket Checks</a></li>
-            <li><a href="#dashboard">Slack &amp; Discord Alerts</a></li>
+            <li><span style="color: var(--success); font-size: 0.85rem;"><i class="fa-solid fa-circle" style="font-size: 0.45rem;"></i> Synthetic Probes Online</span></li>
+            <li><a href="#features">HTTP / HTTPS Probes</a></li>
+            <li><a href="#features">TCP Socket Checks</a></li>
+            <li><a href="#features">Slack &amp; Discord Alerts</a></li>
           </ul>
         </div>
       </div>
@@ -630,7 +660,6 @@
       dd.classList.toggle('open');
     }
 
-    // Close dropdown on outside click
     document.addEventListener('click', (e) => {
       const menu = document.querySelector('.user-menu');
       if (menu && !menu.contains(e.target)) {
@@ -639,7 +668,6 @@
       }
     });
 
-    // Check cookie consent
     document.addEventListener('DOMContentLoaded', () => {
       if (!localStorage.getItem('up_cookie_consent')) {
         document.getElementById('cookieBanner').style.display = 'flex';

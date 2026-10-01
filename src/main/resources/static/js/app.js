@@ -1,7 +1,7 @@
 /* ============================================================
    UPTIMEPULSE — Core Application & Dashboard Client
-   Rock-solid API integration, Auth State Management,
-   SVG Sparklines, Real-Time Pings, and Instant Scanner
+   Strict Authentication State, Zero Auto-Login,
+   Dynamic Landing / Dashboard Views & Connected APIs
    ============================================================ */
 
 const API_BASE = '/api/v1';
@@ -15,7 +15,8 @@ let currentSearch = '';
 /* ─── Initialization ─── */
 document.addEventListener('DOMContentLoaded', () => {
   initAuthState();
-  // Auto-refresh dashboard every 30s
+
+  // Auto-refresh monitors only when authenticated
   setInterval(() => {
     if (token) {
       loadMonitors();
@@ -24,38 +25,67 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 30000);
 });
 
-/* ─── Authentication Management ─── */
+/* ─── Auth State Management ─── */
 function initAuthState() {
   if (token) {
     // Verify token with backend
     apiCall('/auth/me', 'GET')
       .then(user => {
         userEmail = user.email || userEmail;
-        userFullName = user.fullName || userEmail.split('@')[0];
-        setAuthDisplay(true);
+        userFullName = user.fullName || userEmail.split('@')[0] || 'User';
+        setAppState(true);
         loadDashboardData();
       })
       .catch(() => {
-        // Token invalid, try auto-login with default demo credentials
-        performAutoLogin();
+        // Invalid or expired token: clear and show public landing
+        clearAuthState();
+        setAppState(false);
       });
   } else {
-    performAutoLogin();
+    // Unauthenticated: show clean public landing page
+    setAppState(false);
   }
 }
 
-function performAutoLogin() {
-  apiCall('/auth/login', 'POST', { email: 'user@uptimepulse.com', password: 'password123' }, false)
-    .then(data => {
-      saveAuthToken(data);
-      setAuthDisplay(true);
-      loadDashboardData();
-    })
-    .catch(() => {
-      // Offline or guest mode: load public overview data
-      setAuthDisplay(false);
-      loadPublicOverview();
-    });
+function setAppState(isLoggedIn) {
+  const loggedInNav = document.getElementById('loggedInNav');
+  const loggedOutNav = document.getElementById('loggedOutNav');
+  const landingView = document.getElementById('landingView');
+  const dashboardView = document.getElementById('dashboardView');
+  const nameDisplay = document.getElementById('userNameDisplay');
+  const initial = document.getElementById('userInitial');
+
+  if (isLoggedIn) {
+    if (loggedInNav) loggedInNav.style.display = 'flex';
+    if (loggedOutNav) loggedOutNav.style.display = 'none';
+    if (landingView) landingView.style.display = 'none';
+    if (dashboardView) dashboardView.style.display = 'block';
+    if (nameDisplay) nameDisplay.textContent = userFullName || userEmail;
+    if (initial) initial.textContent = (userFullName || userEmail || 'U')[0].toUpperCase();
+  } else {
+    if (loggedInNav) loggedInNav.style.display = 'none';
+    if (loggedOutNav) loggedOutNav.style.display = 'flex';
+    if (landingView) landingView.style.display = 'block';
+    if (dashboardView) dashboardView.style.display = 'none';
+  }
+}
+
+function clearAuthState() {
+  token = '';
+  userEmail = '';
+  userFullName = '';
+  localStorage.removeItem('up_token');
+  localStorage.removeItem('up_email');
+  localStorage.removeItem('up_fullname');
+}
+
+function handleLogout() {
+  clearAuthState();
+  setAppState(false);
+  cachedMonitors = [];
+  renderMonitors([]);
+  renderAlertFeed([]);
+  toast('Signed out successfully.', 'info');
 }
 
 function saveAuthToken(data) {
@@ -65,38 +95,6 @@ function saveAuthToken(data) {
   localStorage.setItem('up_token', token);
   localStorage.setItem('up_email', userEmail);
   localStorage.setItem('up_fullname', userFullName);
-}
-
-function setAuthDisplay(isLoggedIn) {
-  const loggedInNav = document.getElementById('loggedInNav');
-  const loggedOutNav = document.getElementById('loggedOutNav');
-  const nameDisplay = document.getElementById('userNameDisplay');
-  const initial = document.getElementById('userInitial');
-
-  if (isLoggedIn) {
-    if (loggedInNav) loggedInNav.style.display = 'flex';
-    if (loggedOutNav) loggedOutNav.style.display = 'none';
-    if (nameDisplay) nameDisplay.textContent = userFullName || userEmail;
-    if (initial) initial.textContent = (userFullName || userEmail || 'U')[0].toUpperCase();
-  } else {
-    if (loggedInNav) loggedInNav.style.display = 'none';
-    if (loggedOutNav) loggedOutNav.style.display = 'flex';
-  }
-}
-
-function handleLogout() {
-  token = '';
-  userEmail = '';
-  userFullName = '';
-  localStorage.removeItem('up_token');
-  localStorage.removeItem('up_email');
-  localStorage.removeItem('up_fullname');
-  setAuthDisplay(false);
-  cachedMonitors = [];
-  renderMonitors([]);
-  renderAlertFeed([]);
-  toast('Signed out successfully.', 'info');
-  loadPublicOverview();
 }
 
 /* ─── Generic API Helper ─── */
@@ -115,9 +113,8 @@ function apiCall(endpoint, method = 'GET', body = null, requireAuth = true) {
     .then(res => {
       if (res.status === 401 || res.status === 403) {
         if (requireAuth) {
-          token = '';
-          localStorage.removeItem('up_token');
-          setAuthDisplay(false);
+          clearAuthState();
+          setAppState(false);
         }
         throw new Error('Unauthorized');
       }
@@ -147,7 +144,7 @@ function refreshMonitors() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh';
       }
-      toast('Dashboard updated with latest probe metrics.', 'success');
+      toast('Targets refreshed with live probe telemetry.', 'success');
     });
 }
 
@@ -160,35 +157,6 @@ function loadMonitors() {
       // Load historical sparkline curves for each monitor
       cachedMonitors.forEach(m => fetchSparkline(m.id, m.status));
       return cachedMonitors;
-    })
-    .catch(() => {
-      loadPublicOverview();
-    });
-}
-
-function loadPublicOverview() {
-  apiCall('/public/overview', 'GET', null, false)
-    .then(overview => {
-      document.getElementById('kpiUptime').textContent = overview.uptimePercentage || '100%';
-      document.getElementById('kpiMonitors').textContent = overview.totalMonitors || '0';
-      document.getElementById('kpiLatency').textContent = (overview.avgLatencyMs || '0') + ' ms';
-      document.getElementById('kpiSSL').textContent = overview.sslHealthPercentage || '100% Valid';
-
-      if (overview.services && overview.services.length) {
-        const publicList = overview.services.map((s, idx) => ({
-          id: idx + 1,
-          name: s.name,
-          url: s.url,
-          status: s.status,
-          lastLatencyMs: s.latencyMs,
-          sslDaysRemaining: s.sslDaysRemaining,
-          checkIntervalMinutes: 3,
-          tags: 'public, production',
-          publicId: s.publicId
-        }));
-        cachedMonitors = publicList;
-        filterAndRender();
-      }
     })
     .catch(() => {});
 }
@@ -237,9 +205,9 @@ function renderMonitors(monitors) {
       <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
         <i class="fa-solid fa-satellite-dish" style="font-size: 2.25rem; color: var(--primary); margin-bottom: 0.75rem; display: block;"></i>
         <h4 style="color: var(--text-title); margin-bottom: 0.25rem;">No Monitored Targets Found</h4>
-        <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">No active probes match your search criteria.</p>
+        <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">Add your web services or API endpoints to begin synthetic health tracking.</p>
         <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
-          <i class="fa-solid fa-plus"></i> Add Your First Target
+          <i class="fa-solid fa-plus"></i> Add First Monitor
         </button>
       </div>`;
     return;
@@ -369,7 +337,7 @@ function updateKpis(monitors) {
   document.getElementById('kpiSSL').textContent = sslPct;
 
   document.getElementById('kpiUptimeMeta').textContent = total ? `${up} of ${total} targets online` : 'All targets healthy';
-  document.getElementById('kpiMonitorsMeta').textContent = total ? 'Non-blocking NIO probe active' : 'Synthetic probing active';
+  document.getElementById('kpiMonitorsMeta').textContent = total ? 'Continuous monitoring active' : 'Synthetic probing active';
   document.getElementById('kpiSSLMeta').textContent = total ? `${validSsl} certs > 30 days remaining` : 'All certificates valid';
 }
 
@@ -400,6 +368,10 @@ function deleteTarget(id, name) {
 
 /* ─── Create Monitor ─── */
 function openAddMonitorModal() {
+  if (!token) {
+    window.location.href = '/login.html';
+    return;
+  }
   document.getElementById('addMonitorModal').style.display = 'flex';
 }
 
@@ -435,11 +407,17 @@ function handleCreateMonitor(e) {
     });
 }
 
-/* ─── Instant Scanner Bar ─── */
+/* ─── Instant Scanner Bar (Logged-In Tool) ─── */
 function runInstantScan() {
+  if (!token) {
+    toast('Please sign in to scan targets and check SSL certificates.', 'info');
+    setTimeout(() => { window.location.href = '/login.html'; }, 1000);
+    return;
+  }
+
   const url = (document.getElementById('scannerUrl').value || '').trim();
   if (!url) {
-    toast('Please enter a target URL or IP.', 'error');
+    toast('Please enter a target URL or host:port.', 'error');
     return;
   }
 
