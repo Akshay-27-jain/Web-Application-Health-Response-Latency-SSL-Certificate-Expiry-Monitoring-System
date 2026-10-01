@@ -1,7 +1,7 @@
 /* ============================================================
    UPTIMEPULSE — Core Application & Dashboard Client
-   Strict Authentication State, Zero Auto-Login,
-   Dynamic Landing / Dashboard Views & Connected APIs
+   Strict Authentication State, Private User Monitors Isolation,
+   Dedicated Dashboard & Public Landing Page API Connections
    ============================================================ */
 
 const API_BASE = '/api/v1';
@@ -16,9 +16,9 @@ let currentSearch = '';
 document.addEventListener('DOMContentLoaded', () => {
   initAuthState();
 
-  // Auto-refresh monitors only when authenticated
+  // Auto-refresh monitors only when authenticated and on dashboard
   setInterval(() => {
-    if (token) {
+    if (token && document.getElementById('monitorsContainer')) {
       loadMonitors();
       loadAlerts();
     }
@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ─── Auth State Management ─── */
 function initAuthState() {
+  const isDashboardPage = window.location.pathname.includes('dashboard');
+
   if (token) {
     // Verify token with backend
     apiCall('/auth/me', 'GET')
@@ -34,39 +36,43 @@ function initAuthState() {
         userEmail = user.email || userEmail;
         userFullName = user.fullName || userEmail.split('@')[0] || 'User';
         setAppState(true);
-        loadDashboardData();
+        if (document.getElementById('monitorsContainer')) {
+          loadDashboardData();
+        }
       })
       .catch(() => {
-        // Invalid or expired token: clear and show public landing
         clearAuthState();
         setAppState(false);
+        if (isDashboardPage) {
+          window.location.replace('/login.html');
+        }
       });
   } else {
-    // Unauthenticated: show clean public landing page
     setAppState(false);
+    if (isDashboardPage) {
+      window.location.replace('/login.html');
+    }
   }
 }
 
 function setAppState(isLoggedIn) {
   const loggedInNav = document.getElementById('loggedInNav');
   const loggedOutNav = document.getElementById('loggedOutNav');
-  const landingView = document.getElementById('landingView');
-  const dashboardView = document.getElementById('dashboardView');
   const nameDisplay = document.getElementById('userNameDisplay');
   const initial = document.getElementById('userInitial');
+  const dropdownEmail = document.getElementById('userDropdownEmail');
+  const welcomeName = document.getElementById('welcomeUserName');
 
   if (isLoggedIn) {
     if (loggedInNav) loggedInNav.style.display = 'flex';
     if (loggedOutNav) loggedOutNav.style.display = 'none';
-    if (landingView) landingView.style.display = 'none';
-    if (dashboardView) dashboardView.style.display = 'block';
     if (nameDisplay) nameDisplay.textContent = userFullName || userEmail;
+    if (dropdownEmail) dropdownEmail.textContent = userEmail;
+    if (welcomeName) welcomeName.textContent = userFullName || userEmail.split('@')[0];
     if (initial) initial.textContent = (userFullName || userEmail || 'U')[0].toUpperCase();
   } else {
     if (loggedInNav) loggedInNav.style.display = 'none';
     if (loggedOutNav) loggedOutNav.style.display = 'flex';
-    if (landingView) landingView.style.display = 'block';
-    if (dashboardView) dashboardView.style.display = 'none';
   }
 }
 
@@ -83,9 +89,10 @@ function handleLogout() {
   clearAuthState();
   setAppState(false);
   cachedMonitors = [];
-  renderMonitors([]);
-  renderAlertFeed([]);
   toast('Signed out successfully.', 'info');
+  setTimeout(() => {
+    window.location.href = '/login.html';
+  }, 300);
 }
 
 function saveAuthToken(data) {
@@ -115,8 +122,11 @@ function apiCall(endpoint, method = 'GET', body = null, requireAuth = true) {
         if (requireAuth) {
           clearAuthState();
           setAppState(false);
+          if (window.location.pathname.includes('dashboard')) {
+            window.location.replace('/login.html');
+          }
         }
-        throw new Error('Unauthorized');
+        throw new Error('Unauthorized session. Please sign in again.');
       }
       if (!res.ok) {
         return res.json().then(err => { throw new Error(err.message || 'Request failed'); });
@@ -135,7 +145,7 @@ function refreshMonitors() {
   const btn = document.getElementById('refreshBtn');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>';
+    btn.innerHTML = '<span class="spinner"></span> Probing...';
   }
 
   Promise.all([loadMonitors(), loadAlerts()])
@@ -144,7 +154,7 @@ function refreshMonitors() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh';
       }
-      toast('Targets refreshed with live probe telemetry.', 'success');
+      toast('Target telemetry updated with live probes.', 'success');
     });
 }
 
@@ -202,12 +212,16 @@ function renderMonitors(monitors) {
 
   if (!monitors || monitors.length === 0) {
     container.innerHTML = `
-      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
-        <i class="fa-solid fa-satellite-dish" style="font-size: 2.25rem; color: var(--primary); margin-bottom: 0.75rem; display: block;"></i>
-        <h4 style="color: var(--text-title); margin-bottom: 0.25rem;">No Monitored Targets Found</h4>
-        <p style="font-size: 0.85rem; margin-bottom: 1.25rem;">Add your web services or API endpoints to begin synthetic health tracking.</p>
+      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted); background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-lg);">
+        <div style="width: 3.5rem; height: 3.5rem; margin: 0 auto 1.25rem; border-radius: var(--radius-full); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+          <i class="fa-solid fa-satellite-dish"></i>
+        </div>
+        <h4 style="color: var(--text-title); font-size: 1.2rem; font-weight: 700; margin-bottom: 0.4rem;">No Monitored Targets Yet</h4>
+        <p style="font-size: 0.875rem; max-width: 480px; margin: 0 auto 1.5rem; line-height: 1.6; color: var(--text-muted);">
+          You have not added any targets. Add your website, REST API, or database port to begin automated health checks and SSL certificate tracking.
+        </p>
         <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
-          <i class="fa-solid fa-plus"></i> Add First Monitor
+          <i class="fa-solid fa-plus"></i> Add First Target
         </button>
       </div>`;
     return;
@@ -298,24 +312,42 @@ function fetchSparkline(monitorId, status) {
   apiCall(`/monitors/${monitorId}/history`, 'GET')
     .then(history => {
       const container = document.getElementById(`sparkline-${monitorId}`);
-      if (!container || !Array.isArray(history) || history.length === 0) return;
+      if (!container || !history || history.length === 0) return;
 
-      const points = history.slice().reverse().map(h => h.latencyMs || 10);
+      const points = history.slice(0, 16).reverse().map(h => h.latencyMs || 0);
+      if (points.length < 2) return;
+
+      const min = Math.min(...points);
+      const max = Math.max(...points) || 1;
+      const range = max - min || 1;
+      const w = 300;
+      const h = 28;
+      const step = w / (points.length - 1);
+
       const isUp = status === 'UP';
-      const strokeColor = isUp ? '#059669' : '#e11d48';
+      const stroke = isUp ? 'var(--success)' : 'var(--danger)';
+      const fill = isUp ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
 
-      const min = Math.min(...points), max = Math.max(...points, min + 1);
-      const W = 300, H = 28, pad = 3;
-      const svgPoints = points.map((v, i) => {
-        const x = pad + (points.length > 1 ? (i * (W - 2 * pad) / (points.length - 1)) : W / 2);
-        const y = H - pad - ((v - min) / (max - min)) * (H - 2 * pad);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      }).join(' ');
+      const coords = points.map((p, i) => {
+        const x = (i * step).toFixed(1);
+        const y = (h - ((p - min) / range) * (h - 6) - 3).toFixed(1);
+        return `${x},${y}`;
+      });
+
+      const polyline = coords.join(' ');
+      const area = `0,${h} ` + coords.join(' ') + ` ${w},${h}`;
 
       container.innerHTML = `
-        <svg class="sparkline-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-          <polyline fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${svgPoints}"/>
-        </svg>`;
+        <svg class="sparkline-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+          <polygon points="${area}" fill="${fill}" />
+          <polyline points="${polyline}" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      `;
+
+      const valEl = document.getElementById(`sparkline-val-${monitorId}`);
+      if (valEl && points.length > 0) {
+        valEl.textContent = `${points[points.length - 1]} ms`;
+      }
     })
     .catch(() => {});
 }
@@ -324,21 +356,33 @@ function fetchSparkline(monitorId, status) {
 function updateKpis(monitors) {
   const total = monitors.length;
   const up = monitors.filter(m => m.status === 'UP').length;
-  const uptimePct = total > 0 ? ((up / total) * 100).toFixed(2) + '%' : '100%';
+  const uptimePct = total > 0 ? ((up / total) * 100).toFixed(1) + '%' : '100%';
   const avgLat = total > 0
     ? Math.round(monitors.reduce((acc, m) => acc + (m.lastLatencyMs || 0), 0) / total) + ' ms'
-    : '0 ms';
+    : '— ms';
   const validSsl = monitors.filter(m => (m.sslDaysRemaining || 0) > 30).length;
   const sslPct = total > 0 ? Math.round((validSsl / total) * 100) + '% Valid' : '100% Valid';
 
-  document.getElementById('kpiUptime').textContent = uptimePct;
-  document.getElementById('kpiMonitors').textContent = total;
-  document.getElementById('kpiLatency').textContent = avgLat;
-  document.getElementById('kpiSSL').textContent = sslPct;
+  const kpiUptime = document.getElementById('kpiUptime');
+  if (kpiUptime) kpiUptime.textContent = uptimePct;
 
-  document.getElementById('kpiUptimeMeta').textContent = total ? `${up} of ${total} targets online` : 'All targets healthy';
-  document.getElementById('kpiMonitorsMeta').textContent = total ? 'Continuous monitoring active' : 'Synthetic probing active';
-  document.getElementById('kpiSSLMeta').textContent = total ? `${validSsl} certs > 30 days remaining` : 'All certificates valid';
+  const kpiMonitors = document.getElementById('kpiMonitors');
+  if (kpiMonitors) kpiMonitors.textContent = total;
+
+  const kpiLatency = document.getElementById('kpiLatency');
+  if (kpiLatency) kpiLatency.textContent = avgLat;
+
+  const kpiSSL = document.getElementById('kpiSSL');
+  if (kpiSSL) kpiSSL.textContent = sslPct;
+
+  const kpiUptimeMeta = document.getElementById('kpiUptimeMeta');
+  if (kpiUptimeMeta) kpiUptimeMeta.textContent = total ? `${up} of ${total} targets online` : 'Zero downtime detected';
+
+  const kpiMonitorsMeta = document.getElementById('kpiMonitorsMeta');
+  if (kpiMonitorsMeta) kpiMonitorsMeta.textContent = total ? 'Continuous monitoring active' : 'Synthetic probing active';
+
+  const kpiSSLMeta = document.getElementById('kpiSSLMeta');
+  if (kpiSSLMeta) kpiSSLMeta.textContent = total ? `${validSsl} certs > 30 days valid` : 'All certificates valid';
 }
 
 /* ─── Manual Ping ─── */
@@ -366,17 +410,19 @@ function deleteTarget(id, name) {
     .catch(err => toast('Delete failed: ' + err.message, 'error'));
 }
 
-/* ─── Create Monitor ─── */
+/* ─── Create Monitor Modal ─── */
 function openAddMonitorModal() {
   if (!token) {
     window.location.href = '/login.html';
     return;
   }
-  document.getElementById('addMonitorModal').style.display = 'flex';
+  const modal = document.getElementById('addMonitorModal');
+  if (modal) modal.style.display = 'flex';
 }
 
 function closeAddMonitorModal() {
-  document.getElementById('addMonitorModal').style.display = 'none';
+  const modal = document.getElementById('addMonitorModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function handleCreateMonitor(e) {
@@ -407,7 +453,7 @@ function handleCreateMonitor(e) {
     });
 }
 
-/* ─── Instant Scanner Bar (Logged-In Tool) ─── */
+/* ─── Instant Scanner Bar (Authenticated Tool) ─── */
 function runInstantScan() {
   if (!token) {
     toast('Please sign in to scan targets and check SSL certificates.', 'info');
@@ -422,13 +468,13 @@ function runInstantScan() {
   }
 
   const resultsArea = document.getElementById('scannerResults');
-  resultsArea.style.display = 'grid';
+  if (resultsArea) resultsArea.style.display = 'grid';
   document.getElementById('scanHost').textContent = url;
   document.getElementById('scanLatency').textContent = 'Scanning...';
   document.getElementById('scanSSL').textContent = 'Probing...';
   document.getElementById('scanStatusBadge').innerHTML = '<span class="spinner"></span>';
 
-  apiCall('/monitors/scan', 'POST', { url: url }, false)
+  apiCall('/monitors/scan', 'POST', { url: url }, true)
     .then(data => {
       const status = data.status || 'UP';
       const latVal = data.latencyMs != null ? data.latencyMs : data.lastLatencyMs;
@@ -518,7 +564,7 @@ function renderAlertFeed(alerts) {
       <div class="empty-feed">
         <i class="fa-solid fa-shield-check"></i>
         <strong style="display:block;color:var(--text-title);margin-bottom:0.2rem">All Systems Operational</strong>
-        Zero downtime or SSL expiration alerts detected.
+        Zero downtime or SSL expiration alerts detected for your targets.
       </div>`;
     return;
   }
@@ -544,16 +590,19 @@ function renderAlertFeed(alerts) {
 
 /* ─── Webhook Notification Channels ─── */
 function openNotificationsModal() {
-  document.getElementById('notificationsModal').style.display = 'flex';
+  const modal = document.getElementById('notificationsModal');
+  if (modal) modal.style.display = 'flex';
   loadWebhooks();
 }
 
 function closeNotificationsModal() {
-  document.getElementById('notificationsModal').style.display = 'none';
+  const modal = document.getElementById('notificationsModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function loadWebhooks() {
   const container = document.getElementById('webhooksList');
+  if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);"><span class="spinner"></span> Loading channels...</div>';
 
   apiCall('/notifications')

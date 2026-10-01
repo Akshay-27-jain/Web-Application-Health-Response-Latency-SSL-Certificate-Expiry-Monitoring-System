@@ -71,7 +71,8 @@ public class MonitorController {
 
     @PostMapping("/scan")
     @Operation(summary = "Run a one-time scan for a URL without saving a monitor")
-    public ResponseEntity<PingResult> scanUrl(@RequestBody MonitorRequest request) {
+    public ResponseEntity<PingResult> scanUrl(@AuthenticationPrincipal Object principal, @RequestBody MonitorRequest request) {
+        resolveUser(principal);
         PingResult result = monitorService.quickScan(request.getUrl());
         return ResponseEntity.ok(result);
     }

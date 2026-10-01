@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Center &bull; UptimePulse</title>
+  <meta name="description" content="Manage your website health targets, view latency telemetry, and configure SSL expiry alert webhooks.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+
+  <script>
+    // Strict authentication gatekeeper: redirect unauthenticated visitors immediately
+    if (!localStorage.getItem('up_token')) {
+      window.location.replace('/login.html');
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Top Announcement Bar -->
+  <div class="top-bar">
+    <span><i class="fa-solid fa-satellite-dish" style="color: #6ee7b7;"></i> <strong>Live Probing Engine Active:</strong> Multi-region synthetic health checks running</span>
+    <a href="/status.html">Public Status Page &rarr;</a>
+  </div>
+
+  <!-- Sticky Navbar -->
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="/dashboard.html" class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+        <span>UptimePulse</span>
+      </a>
+
+      <!-- Navigation Links -->
+      <ul class="nav-links">
+        <li><a href="/dashboard.html" class="nav-link active"><i class="fa-solid fa-table-columns"></i> Dashboard</a></li>
+        <li><a href="/" class="nav-link"><i class="fa-solid fa-house"></i> Overview</a></li>
+        <li><a href="/status.html" class="nav-link"><i class="fa-solid fa-signal"></i> Public Status</a></li>
+        <li><a href="/swagger-ui/index.html" target="_blank" class="nav-link"><i class="fa-solid fa-code"></i> API Docs</a></li>
+      </ul>
+
+      <!-- User Auth Profile Actions -->
+      <div class="nav-auth-group">
+        <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
+          <i class="fa-solid fa-plus"></i> Add Target
+        </button>
+
+        <!-- User Menu Dropdown -->
+        <div class="user-menu">
+          <div class="user-pill" onclick="toggleUserDropdown()" role="button" tabindex="0">
+            <div class="user-avatar" id="userInitial">U</div>
+            <span class="user-name-text" id="userNameDisplay">Loading...</span>
+            <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem; color: var(--text-subtle);"></i>
+          </div>
+          <div class="user-dropdown" id="userDropdown">
+            <div style="padding: 0.5rem 0.85rem; font-size: 0.775rem; color: var(--text-muted); border-bottom: 1px solid var(--border-light);">
+              Signed in as <strong id="userDropdownEmail" style="color: var(--text-title); display: block; overflow: hidden; text-overflow: ellipsis;">user@uptimepulse.com</strong>
+            </div>
+            <a href="/dashboard.html" class="user-dropdown-item"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+            <button class="user-dropdown-item" onclick="openNotificationsModal()"><i class="fa-solid fa-bell"></i> Alert Webhooks</button>
+            <a href="/status.html" class="user-dropdown-item"><i class="fa-solid fa-signal"></i> Public Status</a>
+            <div style="border-top: 1px solid var(--border-light); margin: 0.25rem 0;"></div>
+            <button class="user-dropdown-item danger" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Main Container -->
+  <main class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
+
+    <!-- Dashboard Header Banner -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+          <i class="fa-solid fa-circle-check" style="color: var(--success);"></i> Live Monitoring Active
+        </div>
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-title); margin-bottom: 0.2rem;">
+          Monitoring Command Center
+        </h1>
+        <p style="font-size: 0.875rem; color: var(--text-muted);">
+          Real-time synthetic probing &bull; Instant alerts routed to your configured channels
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openNotificationsModal()" title="Alert Webhooks">
+          <i class="fa-solid fa-bell"></i> Alert Webhooks
+        </button>
+        <button class="btn btn-secondary btn-sm" id="refreshBtn" onclick="refreshMonitors()">
+          <i class="fa-solid fa-rotate"></i> Refresh
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openAddMonitorModal()">
+          <i class="fa-solid fa-plus"></i> Add Target
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Metric Overview Cards -->
+    <div class="metrics-row">
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">System Uptime</span>
+          <div class="metric-icon green"><i class="fa-solid fa-circle-check"></i></div>
+        </div>
+        <div class="metric-value text-emerald" id="kpiUptime">100%</div>
+        <div class="metric-meta" id="kpiUptimeMeta">Calculated across your targets</div>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Active Targets</span>
+          <div class="metric-icon blue"><i class="fa-solid fa-server"></i></div>
+        </div>
+        <div class="metric-value" id="kpiMonitors">0</div>
+        <div class="metric-meta" id="kpiMonitorsMeta">HTTP &amp; TCP Socket Pings</div>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">Average Latency</span>
+          <div class="metric-icon amber"><i class="fa-solid fa-gauge-high"></i></div>
+        </div>
+        <div class="metric-value text-amber" id="kpiLatency">— ms</div>
+        <div class="metric-meta">Continuous synthetic probes</div>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-header">
+          <span class="metric-title">SSL Certificate Health</span>
+          <div class="metric-icon green"><i class="fa-solid fa-shield-halved"></i></div>
+        </div>
+        <div class="metric-value text-emerald" id="kpiSSL">100% Valid</div>
+        <div class="metric-meta" id="kpiSSLMeta">All certificates &gt; 30 days valid</div>
+      </div>
+    </div>
+
+    <!-- Authenticated Instant Scanner Tool -->
+    <div class="card" style="margin-bottom: 2rem; padding: 1.25rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--primary); letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.4rem;">
+          <i class="fa-solid fa-bolt"></i> Instant URL &amp; SSL Scanner
+        </div>
+        <span style="font-size: 0.75rem; color: var(--text-muted);"><i class="fa-solid fa-circle-info"></i> One-time probe without saving a target</span>
+      </div>
+
+      <div class="scanner-input-bar">
+        <input type="url" id="scannerUrl" class="scanner-input" placeholder="Enter target URL (e.g. https://yourcompany.com)" value="https://google.com">
+        <button class="btn btn-primary" onclick="runInstantScan()">
+          <i class="fa-solid fa-magnifying-glass"></i> Scan Target
+        </button>
+      </div>
+
+      <div id="scannerResults" class="scanner-result-grid" style="display: none;">
+        <div class="scanner-stat">
+          <div class="scanner-stat-lbl">HTTP Status</div>
+          <div class="scanner-stat-val" id="scanStatusBadge">
+            <span class="badge badge-up"><span class="pulse-dot pulse-green"></span> 200 OK</span>
+          </div>
+        </div>
+
+        <div class="scanner-stat">
+          <div class="scanner-stat-lbl">Response Latency</div>
+          <div class="scanner-stat-val text-emerald" id="scanLatency">— ms</div>
+        </div>
+
+        <div class="scanner-stat">
+          <div class="scanner-stat-lbl">SSL Certificate</div>
+          <div class="scanner-stat-val text-emerald" id="scanSSL">— Days Valid</div>
+        </div>
+
+        <div class="scanner-stat">
+          <div class="scanner-stat-lbl">Target Host</div>
+          <div class="scanner-stat-val mono" style="font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="scanHost">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Grid: Targets + Alerts -->
+    <div class="dashboard-grid">
+
+      <!-- Left Column: User's Monitored Services -->
+      <div>
+        <div class="section-head">
+          <div class="section-title">
+            <i class="fa-solid fa-server" style="color: var(--primary);"></i>
+            <span>Your Monitored Targets</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Only targets you created are shown</span>
+        </div>
+
+        <!-- Toolbar & Filter Tabs -->
+        <div class="toolbar">
+          <button class="filter-tab active" onclick="applyStatusFilter('ALL', this)">All Targets</button>
+          <button class="filter-tab" onclick="applyStatusFilter('UP', this)">Online (UP)</button>
+          <button class="filter-tab" onclick="applyStatusFilter('ISSUES', this)">Issues Detected</button>
+
+          <div class="search-field">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" placeholder="Filter targets by name, URL, or #tag..." oninput="handleSearchFilter(this.value)">
+          </div>
+        </div>
+
+        <!-- Monitors Flow Grid -->
+        <div class="monitors-flow" id="monitorsContainer">
+          <!-- Populated via app.js -->
+        </div>
+      </div>
+
+      <!-- Right Column: Incident & Alert Feed -->
+      <aside>
+        <div class="section-head">
+          <div class="section-title">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--warning);"></i>
+            <span>Live Alert Feed</span>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 1rem;">
+          <div class="alert-feed" id="alertFeedContainer">
+            <div class="empty-feed">
+              <i class="fa-solid fa-shield-check"></i>
+              <strong style="display: block; color: var(--text-title); margin-bottom: 0.2rem;">All Systems Operational</strong>
+              Zero downtime or SSL expiration alerts detected for your targets.
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+  </main>
+
+  <!-- Modals -->
+
+  <!-- Add Monitor Modal -->
+  <div class="modal-overlay" id="addMonitorModal">
+    <div class="modal-content">
+      <div class="modal-head">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-title);"><i class="fa-solid fa-circle-plus" style="color: var(--primary);"></i> Add New Target</h3>
+        <button class="modal-close" onclick="closeAddMonitorModal()">&times;</button>
+      </div>
+
+      <form id="addMonitorForm" onsubmit="handleCreateMonitor(event)">
+        <div class="form-row">
+          <label class="form-label">Service / Target Name</label>
+          <input type="text" id="monName" class="form-control" placeholder="e.g. Production Web Portal" required>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Target URL or Host:Port</label>
+          <input type="text" id="monUrl" class="form-control" placeholder="https://mywebsite.com or 192.168.1.1:5432" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-row">
+            <label class="form-label">Protocol Type</label>
+            <select id="monType" class="form-control">
+              <option value="HTTP">HTTP / HTTPS Website</option>
+              <option value="TCP">Raw TCP Port Probe</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label class="form-label">Check Interval</label>
+            <select id="monInterval" class="form-control">
+              <option value="1">Every 1 Minute</option>
+              <option value="3" selected>Every 3 Minutes</option>
+              <option value="5">Every 5 Minutes</option>
+              <option value="10">Every 10 Minutes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Tags (comma-separated)</label>
+          <input type="text" id="monTags" class="form-control" placeholder="production, web, core" value="production">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeAddMonitorModal()">Cancel</button>
+          <button type="submit" id="addMonitorBtn" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Create Target
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Webhook Alert Integrations Modal -->
+  <div class="modal-overlay" id="notificationsModal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-head">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-title);"><i class="fa-solid fa-bell" style="color: var(--primary);"></i> Alert Webhook Integrations</h3>
+        <button class="modal-close" onclick="closeNotificationsModal()">&times;</button>
+      </div>
+
+      <div id="webhooksList" style="max-height: 200px; overflow-y: auto; margin-bottom: 1.25rem;">
+        <!-- Populated via app.js -->
+      </div>
+
+      <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+        <h4 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 0.65rem;">Add New Notification Channel</h4>
+        <form id="addWebhookForm" onsubmit="handleCreateWebhook(event)">
+          <div class="form-row">
+            <label class="form-label">Channel Name</label>
+            <input type="text" id="webhookName" class="form-control" placeholder="e.g. Operations Slack" required>
+          </div>
+
+          <div class="form-row">
+            <label class="form-label">Channel Type</label>
+            <select id="webhookType" class="form-control">
+              <option value="SLACK">Slack Incoming Webhook</option>
+              <option value="DISCORD">Discord Channel Webhook</option>
+              <option value="WEBHOOK">Generic HTTP POST Webhook</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label class="form-label">Webhook Destination URL</label>
+            <input type="url" id="webhookDestination" class="form-control" placeholder="https://hooks.slack.com/services/..." required>
+          </div>
+
+          <button type="submit" id="saveWebhookBtn" class="btn btn-primary" style="width: 100%;">
+            <i class="fa-solid fa-paper-plane"></i> Save &amp; Send Test Alert
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Analytics Modal -->
+  <div class="modal-overlay" id="analyticsModal">
+    <div class="modal-content" style="max-width: 680px;">
+      <div class="modal-head">
+        <h3 id="analyticsTitle" style="font-size: 1.15rem; font-weight: 700; color: var(--text-title);"><i class="fa-solid fa-chart-line" style="color: var(--primary);"></i> Performance Analytics</h3>
+        <button class="modal-close" onclick="closeAnalyticsModal()">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.25rem;">
+        <div class="card" style="padding: 0.85rem; text-align: center; background: var(--bg-card-muted);">
+          <div style="font-size: 0.675rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">24h Min Latency</div>
+          <div id="anaMinLat" style="font-size: 1.25rem; font-weight: 800; color: var(--success); margin-top: 0.2rem;">— ms</div>
+        </div>
+        <div class="card" style="padding: 0.85rem; text-align: center; background: var(--bg-card-muted);">
+          <div style="font-size: 0.675rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">24h Avg Latency</div>
+          <div id="anaAvgLat" style="font-size: 1.25rem; font-weight: 800; color: var(--primary); margin-top: 0.2rem;">— ms</div>
+        </div>
+        <div class="card" style="padding: 0.85rem; text-align: center; background: var(--bg-card-muted);">
+          <div style="font-size: 0.675rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">24h Max Latency</div>
+          <div id="anaMaxLat" style="font-size: 1.25rem; font-weight: 800; color: var(--danger); margin-top: 0.2rem;">— ms</div>
+        </div>
+      </div>
+
+      <h4 style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem;">Recent Synthetic Check Logs</h4>
+      <div style="max-height: 240px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md);">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;">
+          <thead style="background: var(--bg-card-muted); border-bottom: 1px solid var(--border); position: sticky; top: 0;">
+            <tr>
+              <th style="padding: 0.5rem 0.75rem; color: var(--text-muted);">Timestamp</th>
+              <th style="padding: 0.5rem 0.75rem; color: var(--text-muted);">Status</th>
+              <th style="padding: 0.5rem 0.75rem; color: var(--text-muted);">HTTP Code</th>
+              <th style="padding: 0.5rem 0.75rem; color: var(--text-muted);">Latency</th>
+              <th style="padding: 0.5rem 0.75rem; color: var(--text-muted);">SSL Valid</th>
+            </tr>
+          </thead>
+          <tbody id="analyticsLogsBody">
+            <!-- Populated via app.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-bar">
+      <span>&copy; 2026 UptimePulse Monitoring Systems. All rights reserved.</span>
+      <div style="display: flex; gap: 1.25rem;">
+        <a href="/">Home</a>
+        <a href="/status.html">Public Status</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/swagger-ui/index.html" target="_blank">API Docs</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Script -->
+  <script src="/js/app.js"></script>
+  <script>
+    function toggleUserDropdown() {
+      const dd = document.getElementById('userDropdown');
+      if (dd) dd.classList.toggle('open');
+    }
+
+    document.addEventListener('click', (e) => {
+      const menu = document.querySelector('.user-menu');
+      if (menu && !menu.contains(e.target)) {
+        const dd = document.getElementById('userDropdown');
+        if (dd) dd.classList.remove('open');
+      }
+    });
+  </script>
+
+</body>
+</html>

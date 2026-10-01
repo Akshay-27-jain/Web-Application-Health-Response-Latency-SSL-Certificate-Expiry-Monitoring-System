@@ -465,6 +465,11 @@
 
   <script src="/js/app.js"></script>
   <script>
+    // Check if already authenticated
+    if (localStorage.getItem('up_token')) {
+      window.location.replace('/dashboard.html');
+    }
+
     // Handle URL parameters ?tab=register
     document.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -524,7 +529,7 @@
         .then(data => {
           saveAuthToken(data);
           toast(`Welcome back, ${data.fullName || data.email}!`, 'success');
-          setTimeout(() => { window.location.href = '/'; }, 400);
+          setTimeout(() => { window.location.href = '/dashboard.html'; }, 300);
         })
         .catch(err => {
           showError(err.message || 'Invalid email or password.');
@@ -550,7 +555,7 @@
         .then(data => {
           saveAuthToken(data);
           toast(`Account created! Welcome, ${fullName}!`, 'success');
-          setTimeout(() => { window.location.href = '/'; }, 400);
+          setTimeout(() => { window.location.href = '/dashboard.html'; }, 300);
         })
         .catch(err => {
           showError(err.message || 'Registration failed. Email may already be registered.');

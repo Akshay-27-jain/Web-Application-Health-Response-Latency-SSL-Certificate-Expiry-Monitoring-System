@@ -217,13 +217,13 @@ a:hover {
   background: var(--primary-light);
   color: var(--primary);
   border-radius: var(--radius-full);
-}
-
-.nav-links {
+.nav-links, .nav-menu {
   display: flex;
   align-items: center;
   gap: 1.75rem;
   list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .nav-link {

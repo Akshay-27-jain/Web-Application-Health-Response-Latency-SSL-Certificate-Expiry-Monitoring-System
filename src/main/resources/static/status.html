@@ -56,13 +56,14 @@
         <span>UptimePulse</span>
         <span class="brand-tag">Status</span>
       </a>
-      <ul class="nav-menu">
-        <li><a href="/" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Live Dashboard</a></li>
+      <ul class="nav-links">
+        <li><a href="/" class="nav-link"><i class="fa-solid fa-house"></i> Home</a></li>
+        <li><a href="/dashboard.html" class="nav-link"><i class="fa-solid fa-table-columns"></i> Dashboard</a></li>
         <li><a href="/privacy.html" class="nav-link">Privacy</a></li>
         <li><a href="/terms.html" class="nav-link">Terms</a></li>
       </ul>
-      <div class="nav-actions">
-        <a href="/login.html" class="btn btn-primary btn-sm">Sign In</a>
+      <div class="nav-auth-group" id="statusNavAuth">
+        <a href="/login.html" class="btn btn-primary btn-sm" id="authBtn">Sign In</a>
       </div>
     </div>
   </nav>
@@ -164,12 +165,20 @@
       <div style="display: flex; gap: 1.5rem;">
         <a href="/privacy.html">Privacy Policy</a>
         <a href="/terms.html">Terms of Service</a>
-        <a href="/">Dashboard</a>
+        <a href="/dashboard.html">Dashboard</a>
       </div>
     </div>
   </footer>
 
   <script>
+    // Toggle nav button based on auth
+    const token = localStorage.getItem('up_token');
+    const authBtn = document.getElementById('authBtn');
+    if (token && authBtn) {
+      authBtn.textContent = 'Dashboard';
+      authBtn.href = '/dashboard.html';
+    }
+
     // Generate 40 daily uptime bars
     const barContainer = document.getElementById('historyBars');
     for (let i = 0; i < 40; i++) {
